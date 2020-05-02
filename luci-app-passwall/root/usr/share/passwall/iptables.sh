@@ -200,18 +200,21 @@ filter_node() {
 			local port=$(config_n_get $1 port)
 			
 			if [ -n "$3" ] && [ "$3" == "1" ] && [ -n "$4" ]; then
-				if [ "$i" == "$ipt_m" ]; then
-					$i -I PSW_OUTPUT 2 -p $2 -d $address --dport $port $(REDIRECT 1 MARK)
-				else
-					$i -I PSW_OUTPUT 2 -p $2 -d $address --dport $port $(REDIRECT $4)
-				fi
+				is_exist=$($i -n -L PSW_OUTPUT 2>/dev/null | grep -c "$address:$port")
+				[ "$is_exist" == 0 ] && {
+					if [ "$i" == "$ipt_m" ]; then
+						$i -I PSW_OUTPUT 2 $(comment "$address:$port") -p $2 -d $address --dport $port $(REDIRECT 1 MARK)
+					else
+						$i -I PSW_OUTPUT 2 $(comment "$address:$port") -p $2 -d $address --dport $port $(REDIRECT $4)
+					fi
+				}
 			else
 				is_exist=$($i -n -L PSW_OUTPUT 2>/dev/null | grep -c "$address:$port")
 				[ "$is_exist" == 0 ] && {
 					local ADD_INDEX=2
 					local INDEX=$($i -n -L PSW_OUTPUT --line-numbers | grep "$IPSET_VPSIPLIST" | sed -n '$p' | awk '{print $1}')
 					[ -n "$INDEX" ] && ADD_INDEX=$INDEX
-					$i -I PSW_OUTPUT $ADD_INDEX -p $2 -d $address --dport $port $(comment "$address:$port") -j RETURN
+					$i -I PSW_OUTPUT $ADD_INDEX $(comment "$address:$port") -p $2 -d $address --dport $port -j RETURN
 				}
 			fi
 		}
@@ -220,14 +223,29 @@ filter_node() {
 	if [ "$tmp_type" == "v2ray_shunt" ]; then
 		local default_node=$(config_n_get $1 default_node nil)
 		filter_rules $default_node $2
+		local default_node_address=$(get_host_ip ipv4 $(config_n_get $default_node address) 1)
+		local default_node_port=$(config_n_get $default_node port)
 		
-		local youtube_node=$(config_n_get $1 youtube_node)
 		local youtube_proxy=$(config_n_get $1 youtube_proxy 0)
-		[ "$default_node" == "$youtube_node" ] && youtube_proxy=0
-		local netflix_node=$(config_n_get $1 netflix_node)
-		local netflix_proxy=$(config_n_get $1 netflix_proxy 0)
-		[ "$default_node" == "$netflix_node" ] && netflix_proxy=0
+		local youtube_node=$(config_n_get $1 youtube_node nil)
+		[ "$youtube_proxy" == 1 ] && {
+			local youtube_node_address=$(get_host_ip ipv4 $(config_n_get $youtube_node address) 1)
+			local youtube_node_port=$(config_n_get $youtube_node port)
+			[ "$youtube_node_address" == "$default_node_address" ] && [ "$youtube_node_port" == "$default_node_port" ] && {
+				youtube_proxy=0
+			}
+		}
 		filter_rules $(config_n_get $1 youtube_node) $2 $youtube_proxy $3
+		
+		local netflix_proxy=$(config_n_get $1 netflix_proxy 0)
+		local netflix_node=$(config_n_get $1 netflix_node nil)
+		[ "$netflix_proxy" == 1 ] && {
+			local netflix_node_address=$(get_host_ip ipv4 $(config_n_get $netflix_node address) 1)
+			local netflix_node_port=$(config_n_get $netflix_node port)
+			[ "$netflix_node_address" == "$default_node_address" ] && [ "$netflix_node_port" == "$default_node_port" ] && {
+				netflix_proxy=0
+			}
+		}
 		filter_rules $(config_n_get $1 netflix_node) $2 $netflix_proxy $3
 		
 	elif [ "$tmp_type" == "v2ray_balancing" ]; then
