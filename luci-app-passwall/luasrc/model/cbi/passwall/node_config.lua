@@ -101,30 +101,29 @@ brook_protocol:depends("type", "Brook")
 brook_tls = s:option(Flag, "brook_tls", translate("Use TLS"))
 brook_tls:depends("brook_protocol", "wsclient")
 
-local n = {}
+local nodes_table = {}
 uci:foreach(appname, "nodes", function(e)
     if e.type and e.remarks and e.port then
         if e.address:match("[\u4e00-\u9fa5]") and e.address:find("%.") and e.address:sub(#e.address) ~= "." then
-            n[e[".name"]] = "%s：[%s] %s:%s" % {e.type, e.remarks, e.address, e.port}
+            nodes_table[#nodes_table + 1] = {
+                id = e[".name"],
+                remarks = "%s：[%s] %s:%s" % {e.type, e.remarks, e.address, e.port}
+            }
         end
     end
 end)
-
-local key_table = {}
-for key, _ in pairs(n) do table.insert(key_table, key) end
-table.sort(key_table)
 
 v2ray_balancing_node = s:option(DynamicList, "v2ray_balancing_node",
                                 translate("Load balancing node list"),
                                 translate(
                                     "Load balancing node list, <a target='_blank' href='https://toutyrater.github.io/routing/balance2.html'>document</a>"))
-for _, key in pairs(key_table) do v2ray_balancing_node:value(key, n[key]) end
+for k, v in pairs(nodes_table) do v2ray_balancing_node:value(v.id, v.remarks) end
 v2ray_balancing_node:depends("type", "V2ray_balancing")
 
 youtube_node = s:option(ListValue, "youtube_node",
                         "Youtube " .. translate("Node"))
 youtube_node:value("nil", translate("Close"))
-for _, key in pairs(key_table) do youtube_node:value(key, n[key]) end
+for k, v in pairs(nodes_table) do youtube_node:value(v.id, v.remarks) end
 youtube_node:depends("type", "V2ray_shunt")
 
 youtube_proxy = s:option(Flag, "youtube_proxy", "Youtube " .. translate("Node") .. translate("Preproxy"),
@@ -135,7 +134,7 @@ youtube_proxy:depends("type", "V2ray_shunt")
 netflix_node = s:option(ListValue, "netflix_node",
                         "Netflix " .. translate("Node"))
 netflix_node:value("nil", translate("Close"))
-for _, key in pairs(key_table) do netflix_node:value(key, n[key]) end
+for k, v in pairs(nodes_table) do netflix_node:value(v.id, v.remarks) end
 netflix_node:depends("type", "V2ray_shunt")
 
 netflix_proxy = s:option(Flag, "netflix_proxy", "Netflix " .. translate("Node") .. translate("Preproxy"),
@@ -146,7 +145,7 @@ netflix_proxy:depends("type", "V2ray_shunt")
 default_node = s:option(ListValue, "default_node",
                         translate("Default") .. " " .. translate("Node"))
 default_node:value("nil", translate("Close"))
-for _, key in pairs(key_table) do default_node:value(key, n[key]) end
+for k, v in pairs(nodes_table) do default_node:value(v.id, v.remarks) end
 default_node:depends("type", "V2ray_shunt")
 
 address = s:option(Value, "address", translate("Address (Support Domain Name)"))

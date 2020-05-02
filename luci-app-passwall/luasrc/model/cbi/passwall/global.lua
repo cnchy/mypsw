@@ -14,7 +14,7 @@ local function is_finded(e)
             false
 end
 
-local n = {}
+local nodes_table = {}
 uci:foreach(appname, "nodes", function(e)
     local type = e.type
     if type == nil then type = "" end
@@ -23,19 +23,19 @@ uci:foreach(appname, "nodes", function(e)
     -- if (type == "V2ray_balancing" or type == "V2ray_shunt") or (address:match("[\u4e00-\u9fa5]") and address:find("%.") and address:sub(#address) ~= ".") then
     if type and address and e.remarks then
         if e.use_kcp and e.use_kcp == "1" then
-            n[e[".name"]] = "%s+%s：[%s] %s" %
-                                {translate(type), "Kcptun", e.remarks, address}
+            nodes_table[#nodes_table + 1] = {
+                id = e[".name"],
+                remarks = "%s+%s：[%s] %s" % {translate(type), "Kcptun", e.remarks, address}
+            }
         else
-            n[e[".name"]] = "%s：[%s] %s" %
-                                {translate(type), e.remarks, address}
+            nodes_table[#nodes_table + 1] = {
+                id = e[".name"],
+                remarks = "%s：[%s] %s" % {translate(type), e.remarks, address}
+            }
         end
     end
     -- end
 end)
-
-local key_table = {}
-for key, _ in pairs(n) do table.insert(key_table, key) end
-table.sort(key_table)
 
 m = Map(appname)
 local status_use_big_icon = api.uci_get_type("global_other",
@@ -57,8 +57,7 @@ o = s:option(Flag, "enabled", translate("Main switch"))
 o.rmempty = false
 
 ---- TCP Node
-local tcp_node_num = tonumber(
-                         api.uci_get_type("global_other", "tcp_node_num", 1))
+local tcp_node_num = tonumber(api.uci_get_type("global_other", "tcp_node_num", 1))
 for i = 1, tcp_node_num, 1 do
     if i == 1 then
         o = s:option(ListValue, "tcp_node" .. i, translate("TCP Node"))
@@ -68,12 +67,11 @@ for i = 1, tcp_node_num, 1 do
                      translate("TCP Node") .. " " .. i)
     end
     o:value("nil", translate("Close"))
-    for _, key in pairs(key_table) do o:value(key, n[key]) end
+    for k, v in pairs(nodes_table) do o:value(v.id, v.remarks) end
 end
 
 ---- UDP Node
-local udp_node_num = tonumber(
-                         api.uci_get_type("global_other", "udp_node_num", 1))
+local udp_node_num = tonumber(api.uci_get_type("global_other", "udp_node_num", 1))
 for i = 1, udp_node_num, 1 do
     if i == 1 then
         o = s:option(ListValue, "udp_node" .. i, translate("UDP Node"))
@@ -85,12 +83,11 @@ for i = 1, udp_node_num, 1 do
                      translate("UDP Node") .. " " .. i)
         o:value("nil", translate("Close"))
     end
-    for _, key in pairs(key_table) do o:value(key, n[key]) end
+    for k, v in pairs(nodes_table) do o:value(v.id, v.remarks) end
 end
 
 ---- Socks Node
-local socks_node_num = tonumber(api.uci_get_type("global_other",
-                                                  "socks_node_num", 1))
+local socks_node_num = tonumber(api.uci_get_type("global_other","socks_node_num", 1))
 for i = 1, socks_node_num, 1 do
     if i == 1 then
         o = s:option(ListValue, "socks_node" .. i, translate("Socks Node"))
@@ -102,7 +99,7 @@ for i = 1, socks_node_num, 1 do
                      translate("Socks Node") .. " " .. i)
         o:value("nil", translate("Close"))
     end
-    for _, key in pairs(key_table) do o:value(key, n[key]) end
+    for k, v in pairs(nodes_table) do o:value(v.id, v.remarks) end
 end
 
 o = s:option(Value, "up_china_dns", translate("China DNS Server") .. "(UDP)")
