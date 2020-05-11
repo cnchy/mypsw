@@ -21,6 +21,7 @@ local application = 'passwall'
 local uciType = 'nodes'
 local ucic2 = uci.cursor()
 local arg2 = arg[2]
+local allowInsecure_default = ucic2:get(application, "@global_subscribe[0]", "allowInsecure")
 ucic2:revert(application)
 
 local log = function(...)
@@ -368,7 +369,7 @@ local function processData(szType, content, add_mode)
 		if info.tls == "tls" or info.tls == "1" then
 			result.v2ray_stream_security = "tls"
 			result.tls_serverName = info.host
-			result.tls_allowInsecure = 1
+			result.tls_allowInsecure = allowInsecure_default
 		else
 			result.v2ray_stream_security = "none"
 		end
@@ -426,7 +427,7 @@ local function processData(szType, content, add_mode)
 		if Info then
 			local address, port, peer
 			local password = Info[1]
-			local allowInsecure = 1
+			local allowInsecure = allowInsecure_default
 			local params = {}
 			local hostInfo = split(Info[2], ":")
 			if hostInfo then
@@ -471,10 +472,11 @@ local function processData(szType, content, add_mode)
 	end
 	return result
 end
--- wget
-local function wget(url)
+
+-- curl
+local function curl(url)
 	local ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36"
-	local stdout = luci.sys.exec('/usr/bin/wget --user-agent="' .. ua .. '" --no-check-certificate -t 3 -T 10 -O- "' .. url .. '"')
+	local stdout = luci.sys.exec('curl -sL --user-agent "' .. ua .. '" -k --retry 3 --connect-timeout 3 "' .. url .. '"')
 	return trim(stdout)
 end
 
@@ -747,7 +749,7 @@ local execute = function()
 				local remark = obj.remark
 				local url = obj.url
 				log('正在订阅: ' .. url)
-				local raw = wget(url)
+				local raw = curl(url)
 				parse_link(raw, remark)
 			end
 		end)

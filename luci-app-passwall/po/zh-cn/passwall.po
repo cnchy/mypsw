@@ -526,6 +526,15 @@ msgstr "备用"
 msgid "Manually update"
 msgstr "手动更新"
 
+msgid "Enable custom url"
+msgstr "启用自定义规则地址"
+
+msgid "gfwlist Update url"
+msgstr "GFWList更新URL"
+
+msgid "Chnroute Update url"
+msgstr "国内IP段(Chnroute)更新URL"
+
 msgid "Rule status"
 msgstr "规则版本"
 
@@ -645,6 +654,9 @@ msgstr "关键字丢弃"
 
 msgid "When checked, the keywords in the list are discarded. Otherwise, it is not discarded."
 msgstr "当勾选时，将丢弃包含列表里的关键字的节点。否则，将保留列表的关键字的节点（反过来）。"
+
+msgid "Whether unsafe connections are allowed. When checked, V2Ray does not check the validity of the TLS certificate provided by the remote host by default."
+msgstr "是否允许不安全连接。当勾选时，缺省情况下客户端不会检查远端主机所提供的 TLS 证书的有效性。"
 
 msgid "Add"
 msgstr "添加"

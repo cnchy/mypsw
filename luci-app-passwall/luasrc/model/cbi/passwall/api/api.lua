@@ -6,6 +6,8 @@ local util = require "luci.util"
 local i18n = require "luci.i18n"
 
 appname = "passwall"
+curl = "/usr/bin/curl"
+curl_args = {"-skL", "--connect-timeout 3", "--retry 3", "-m 60"}
 wget = "/usr/bin/wget"
 wget_args = {"--no-check-certificate", "--quiet", "--timeout=100", "--tries=3"}
 command_timeout = 300
@@ -169,16 +171,7 @@ end
 function get_api_json(url)
     local jsonc = require "luci.jsonc"
 
-    local output = {}
-    -- exec(wget, { "-O-", url, _unpack(wget_args) },
-    --	function(chunk) output[#output + 1] = chunk end)
-    -- local json_content = util.trim(table.concat(output))
-
-    local json_content = luci.sys.exec(wget ..
-                                           " --no-check-certificate --timeout=10 -t 1 -O- " ..
-                                           url)
-
+    local json_content = luci.sys.exec(curl .. " " .. _unpack(curl_args) .. " " .. url)
     if json_content == "" then return {} end
-
     return jsonc.parse(json_content) or {}
 end

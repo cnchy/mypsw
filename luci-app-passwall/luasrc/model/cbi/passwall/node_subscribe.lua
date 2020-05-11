@@ -62,6 +62,10 @@ o = s:option(Flag, "filter_keyword_discarded", translate("Filter keyword discard
 o.default = "1"
 o.rmempty = false
 
+o = s:option(Flag, "allowInsecure", translate("allowInsecure"), translate("Whether unsafe connections are allowed. When checked, V2Ray does not check the validity of the TLS certificate provided by the remote host by default."))
+o.default = "1"
+o.rmempty = false
+
 s = m:section(TypedSection, "subscribe_list", "",
               "<font color='red'>" .. translate(
                   "Please input the subscription url first, save and submit before updating. If you subscribe to update, it is recommended to delete all subscriptions and then re-subscribe.") ..

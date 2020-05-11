@@ -21,13 +21,13 @@ test_url() {
 	[ -n "$2" ] && try=$2
 	local timeout=2
 	[ -n "$3" ] && timeout=$3
-	status=$(/usr/bin/wget -4 --no-check-certificate --spider --timeout=$timeout --tries $try "$url" 2>/dev/null)
-	if [ "$?" == 0 ]; then
-		status=200
-	else
-		status=$(/usr/bin/wget --no-check-certificate --spider --timeout=$timeout --tries $try "$url" 2>/dev/null)
-		[ "$?" == 0 ] && status=200
-	fi
+	status=$(/usr/bin/curl -I -o /dev/null -s --connect-timeout $timeout --retry $try -w %{http_code} "$url")
+	case "$status" in
+		204|\
+		200)
+			status=200
+		;;
+	esac
 	echo $status
 }
 

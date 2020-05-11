@@ -2,7 +2,6 @@
 module("luci.controller.passwall", package.seeall)
 local appname = "passwall"
 local http = require "luci.http"
-local passwall = require "luci.model.cbi.passwall.api.passwall"
 local kcptun = require "luci.model.cbi.passwall.api.kcptun"
 local brook = require "luci.model.cbi.passwall.api.brook"
 local v2ray = require "luci.model.cbi.passwall.api.v2ray"
@@ -179,8 +178,6 @@ function connect_status()
         local use_time = luci.sys.exec("echo -n '" .. result .. "' | awk -F ':' '{print $2}'")
         e.use_time = string.format("%.2f", use_time * 1000)
         e.ping_type = "curl"
-    else
-        e.status = luci.sys.call("echo -n $(/usr/share/passwall/test.sh test_url '" .. url .. "') | grep 200 >/dev/null") == 0
     end
     luci.http.prepare_content("application/json")
     luci.http.write_json(e)
@@ -268,17 +265,6 @@ function update_rules()
     local update = luci.http.formvalue("update")
     luci.sys.call("lua /usr/share/passwall/rule_update.lua log '" .. update ..
                       "' > /dev/null 2>&1 &")
-end
-
-function luci_check()
-    local json = passwall.to_check("")
-    http_write_json(json)
-end
-
-function luci_update()
-    local json = passwall.update_luci(http.formvalue("url"),
-                                      http.formvalue("save"))
-    http_write_json(json)
 end
 
 function kcptun_check()
