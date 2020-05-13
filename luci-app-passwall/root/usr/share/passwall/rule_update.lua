@@ -7,7 +7,7 @@ local name = 'passwall'
 local arg1 = arg[1]
 
 local rule_path = "/usr/share/" .. name .. "/rules"
-local url_main = "https://raw.githubusercontent.com/hq450/fancyss/master/rules"
+local url_main = 'https://cdn.jsdelivr.net/gh/hq450/fancyss/rules'
 local reboot = 0
 local gfwlist_update = 0
 local chnroute_update = 0
@@ -28,6 +28,9 @@ local new_version = os.date("%Y-%m-%d")
 local enable_custom_url = ucic:get_first(name, 'global_rules', "enable_custom_url", 0)
 local gfwlist_url = ucic:get_first(name, 'global_rules', "gfwlist_url", "https://cdn.jsdelivr.net/gh/Loukky/gfwlist-by-loukky/gfwlist.txt")
 local chnroute_url = ucic:get_first(name, 'global_rules', "chnroute_url", "https://ispip.clang.cn/all_cn.txt")
+local chnlist_url_1 = 'https://cdn.jsdelivr.net/gh/felixonmars/dnsmasq-china-list/accelerated-domains.china.conf'
+local chnlist_url_2 = 'https://cdn.jsdelivr.net/gh/felixonmars/dnsmasq-china-list/apple.china.conf'
+local chnlist_url_3 = 'https://cdn.jsdelivr.net/gh/felixonmars/dnsmasq-china-list/google.china.conf'
 
 local bc='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
@@ -88,7 +91,12 @@ local function curl(url, file)
 		cmd = cmd .. " -o " .. file
 	end
 	local stdout = luci.sys.exec(cmd)
-    return tonumber(trim(stdout))
+
+	if file then
+		return tonumber(trim(stdout))
+	else
+		return trim(stdout)
+	end
 end
 
 --获取gfwlist
@@ -116,15 +124,29 @@ local function fetch_chnroute()
 	return sret;
 end
 
+--获取chnlist
+local function fetch_chnlist()
+	--请求chnlist
+	local sret = 0
+	local sret1 = curl(chnlist_url_1, "/tmp/chnlist_1")
+	local sret2 = curl(chnlist_url_2, "/tmp/chnlist_2")
+	local sret3 = curl(chnlist_url_3, "/tmp/chnlist_3")
+
+	if sret1 == 200 and sret2 ==200 and sret3 == 200 then
+		sret=200
+	end
+	return sret;
+end
+
 --gfwlist转码至dnsmasq格式
 local function generate_gfwlist()
 	local domains = {}
 	local out = io.open("/tmp/gfwlist_tmp", "w") 
 
 	for line in io.lines("/tmp/gfwlist.txt") do  
-		if not (string.find(line, comment_pattern) and not string.find(line, ip_pattern)) then
+		if not (string.find(line, comment_pattern) or string.find(line, ip_pattern)) then
 			local start, finish, match = string.find(line, domain_pattern)
-			if (start)  then
+			if (start) then
 				domains[match] = true
 			end
 		end
@@ -136,6 +158,43 @@ local function generate_gfwlist()
 	end
 
 	out:close()
+end
+
+--处理合并chnlist列表
+local function generate_chnlist()
+	local domains = {}
+	local out = io.open("/tmp/cdn_tmp", "w")
+
+	for line in io.lines("/tmp/chnlist_1") do  
+		local start, finish, match = string.find(line, domain_pattern)
+		if (start)  then
+			domains[match] = true
+		end
+	end
+
+	for line in io.lines("/tmp/chnlist_2") do  
+		local start, finish, match = string.find(line, domain_pattern)
+		if (start)  then
+			domains[match] = true
+		end
+	end
+
+	for line in io.lines("/tmp/chnlist_3") do  
+		local start, finish, match = string.find(line, domain_pattern)
+		if (start)  then
+			domains[match] = true
+		end
+	end
+
+	--写入临时文件
+	for k,v in pairs(domains) do
+		out:write(string.format("%s\n", k))
+	end
+	
+	out:close()
+
+	--删除重复条目并排序
+	luci.sys.call("cat /tmp/cdn_tmp | sort -u > /tmp/chnlist_tmp")
 end
 
 if arg[2] then
@@ -201,83 +260,112 @@ if tonumber(enable_custom_url) == 1 then
 		end
 		os.remove("/tmp/chnroute_tmp")
 	end
-end
-
-local version = curl(url_main .. "/version1")
-if version then
-	if tonumber(gfwlist_update) == 1 and tonumber(enable_custom_url) == 0 then
-		log("开始更新gfwlist...")
-		local gfwlist = luci.sys.exec("echo -n $(echo '" .. version .. "' | sed -n 1p)")
-		local new_version = luci.sys.exec("echo -n $(echo '" .. gfwlist .. "' | awk '{print $1}')")
-		local new_md5 = luci.sys.exec("echo -n $(echo '" .. gfwlist .. "' | awk '{print $3}')")
-		if new_version ~= "" and new_md5 ~= "" then
-			local old_version = ucic:get_first(name, 'global_rules', "gfwlist_version", "nil")
-			local old_md5 = luci.sys.exec("echo -n $(md5sum " .. rule_path .. "/gfwlist.conf | awk '{print $1}')")
-			if old_md5 ~= new_md5 or old_version ~= new_version then
-				curl(url_main .. "/gfwlist.conf", "/tmp/gfwlist_tmp")
-				local download_md5 = luci.sys.exec("echo -n $([ -f '/tmp/gfwlist_tmp' ] && md5sum /tmp/gfwlist_tmp | awk '{print $1}')")
-				if download_md5 == new_md5 then
-					luci.sys.exec("mv -f /tmp/gfwlist_tmp " .. rule_path .. "/gfwlist.conf")
-					ucic:set(name, ucic:get_first(name, 'global_rules'), "gfwlist_version", new_version)
-					reboot = 1
-					log("更新gfwlist成功...")
-				end
-			else
-				log("gfwlist版本一致，不用更新。")
-			end
-		else
-			log("gfwlist文件下载失败！")
-		end
-	end
-
-	if tonumber(chnroute_update) == 1 and tonumber(enable_custom_url) == 0 then
-		log("开始更新chnroute...")
-		local chnroute = luci.sys.exec("echo -n $(echo '" .. version .. "' | sed -n 2p)")
-		local new_version = luci.sys.exec("echo -n $(echo '" .. chnroute .. "' | awk '{print $1}')")
-		local new_md5 = luci.sys.exec("echo -n $(echo '" .. chnroute .. "' | awk '{print $3}')")
-		if new_version ~= "" and new_md5 ~= "" then
-			local old_version = ucic:get_first(name, 'global_rules', "chnroute_version", "nil")
-			local old_md5 = luci.sys.exec("echo -n $(md5sum " .. rule_path .. "/chnroute | awk '{print $1}')")
-			if old_md5 ~= new_md5 or old_version ~= new_version then
-				curl(url_main .. "/chnroute.txt", "/tmp/chnroute_tmp")
-				local download_md5 = luci.sys.exec("echo -n $([ -f '/tmp/chnroute_tmp' ] && md5sum /tmp/chnroute_tmp | awk '{print $1}')")
-				if download_md5 == new_md5 then
-					luci.sys.exec("mv -f /tmp/chnroute_tmp " .. rule_path .. "/chnroute")
-					ucic:set(name, ucic:get_first(name, 'global_rules'), "chnroute_version", new_version)
-					reboot = 1
-					log("更新chnroute成功...")
-				end
-			else
-				log("chnroute版本一致，不用更新。")
-			end
-		else
-			log("chnroute文件下载失败！")
-		end
-	end
-
+	
 	if tonumber(chnlist_update) == 1 then
 		log("开始更新chnlist...")
-		local chnlist = luci.sys.exec("echo -n $(echo '" .. version .. "' | sed -n 4p)")
-		local new_version = luci.sys.exec("echo -n $(echo '" .. chnlist .. "' | awk '{print $1}')")
-		local new_md5 = luci.sys.exec("echo -n $(echo '" .. chnlist .. "' | awk '{print $3}')")
-		if new_version ~= "" and new_md5 ~= "" then
-			local old_version = ucic:get_first(name, 'global_rules', "chnlist_version", "nil")
-			local old_md5 = luci.sys.exec("echo -n $(md5sum " .. rule_path .. "/chnlist | awk '{print $1}')")
-			if old_md5 ~= new_md5 or old_version ~= new_version then
-				curl(url_main .. "/cdn.txt", "/tmp/chnlist_tmp")
-				local download_md5 = luci.sys.exec("echo -n $([ -f '/tmp/chnlist_tmp' ] && md5sum /tmp/chnlist_tmp | awk '{print $1}')")
-				if download_md5 == new_md5 then
-					luci.sys.exec("mv -f /tmp/chnlist_tmp " .. rule_path .. "/chnlist")
-					ucic:set(name, ucic:get_first(name, 'global_rules'), "chnlist_version", new_version)
-					reboot = 1
-					log("更新chnlist成功...")
-				end
+		local old_md5 = luci.sys.exec("echo -n $(md5sum " .. rule_path .. "/chnlist | awk '{print $1}')")
+		local status = fetch_chnlist()
+		if status == 200 then
+			generate_chnlist()
+			local new_md5 = luci.sys.exec("echo -n $([ -f '/tmp/chnlist_tmp' ] && md5sum /tmp/chnlist_tmp | awk '{print $1}')")
+			if old_md5 ~= new_md5 then
+				luci.sys.exec("mv -f /tmp/chnlist_tmp " .. rule_path .. "/chnlist")
+				ucic:set(name, ucic:get_first(name, 'global_rules'), "chnlist_version", new_version)
+				reboot = 1
+				log("更新chnlist成功...")
 			else
 				log("chnlist版本一致，不用更新。")
 			end
 		else
 			log("chnlist文件下载失败！")
 		end
+		os.remove("/tmp/chnlist_1")
+		os.remove("/tmp/chnlist_2")
+		os.remove("/tmp/chnlist_3")
+		os.remove("/tmp/cdn_tmp")
+		os.remove("/tmp/chnlist_tmp")
+	end
+end
+
+if (enable_custom_url) == 0 then
+	local version = curl(url_main .. "/version1")
+	if version and tonumber(version) ~= 0 then
+		if tonumber(gfwlist_update) == 1 then
+			log("开始更新gfwlist...")
+			local gfwlist = luci.sys.exec("echo -n $(echo '" .. version .. "' | sed -n 1p)")
+			local new_version = luci.sys.exec("echo -n $(echo '" .. gfwlist .. "' | awk '{print $1}')")
+			local new_md5 = luci.sys.exec("echo -n $(echo '" .. gfwlist .. "' | awk '{print $3}')")
+			if new_version ~= "" and new_md5 ~= "" then
+				local old_version = ucic:get_first(name, 'global_rules', "gfwlist_version", "nil")
+				local old_md5 = luci.sys.exec("echo -n $(md5sum " .. rule_path .. "/gfwlist.conf | awk '{print $1}')")
+				if old_md5 ~= new_md5 or old_version ~= new_version then
+					curl(url_main .. "/gfwlist.conf", "/tmp/gfwlist_tmp")
+					local download_md5 = luci.sys.exec("echo -n $([ -f '/tmp/gfwlist_tmp' ] && md5sum /tmp/gfwlist_tmp | awk '{print $1}')")
+					if download_md5 == new_md5 then
+						luci.sys.exec("mv -f /tmp/gfwlist_tmp " .. rule_path .. "/gfwlist.conf")
+						ucic:set(name, ucic:get_first(name, 'global_rules'), "gfwlist_version", new_version)
+						reboot = 1
+						log("更新gfwlist成功...")
+					end
+				else
+					log("gfwlist版本一致，不用更新。")
+				end
+			else
+				log("gfwlist文件下载失败！")
+			end
+		end
+
+		if tonumber(chnroute_update) == 1 and tonumber(enable_custom_url) == 0 then
+			log("开始更新chnroute...")
+			local chnroute = luci.sys.exec("echo -n $(echo '" .. version .. "' | sed -n 2p)")
+			local new_version = luci.sys.exec("echo -n $(echo '" .. chnroute .. "' | awk '{print $1}')")
+			local new_md5 = luci.sys.exec("echo -n $(echo '" .. chnroute .. "' | awk '{print $3}')")
+			if new_version ~= "" and new_md5 ~= "" then
+				local old_version = ucic:get_first(name, 'global_rules', "chnroute_version", "nil")
+				local old_md5 = luci.sys.exec("echo -n $(md5sum " .. rule_path .. "/chnroute | awk '{print $1}')")
+				if old_md5 ~= new_md5 or old_version ~= new_version then
+					curl(url_main .. "/chnroute.txt", "/tmp/chnroute_tmp")
+					local download_md5 = luci.sys.exec("echo -n $([ -f '/tmp/chnroute_tmp' ] && md5sum /tmp/chnroute_tmp | awk '{print $1}')")
+					if download_md5 == new_md5 then
+						luci.sys.exec("mv -f /tmp/chnroute_tmp " .. rule_path .. "/chnroute")
+						ucic:set(name, ucic:get_first(name, 'global_rules'), "chnroute_version", new_version)
+						reboot = 1
+						log("更新chnroute成功...")
+					end
+				else
+					log("chnroute版本一致，不用更新。")
+				end
+			else
+				log("chnroute文件下载失败！")
+			end
+		end
+
+		if tonumber(chnlist_update) == 1 then
+			log("开始更新chnlist...")
+			local chnlist = luci.sys.exec("echo -n $(echo '" .. version .. "' | sed -n 4p)")
+			local new_version = luci.sys.exec("echo -n $(echo '" .. chnlist .. "' | awk '{print $1}')")
+			local new_md5 = luci.sys.exec("echo -n $(echo '" .. chnlist .. "' | awk '{print $3}')")
+			if new_version ~= "" and new_md5 ~= "" then
+				local old_version = ucic:get_first(name, 'global_rules', "chnlist_version", "nil")
+				local old_md5 = luci.sys.exec("echo -n $(md5sum " .. rule_path .. "/chnlist | awk '{print $1}')")
+				if old_md5 ~= new_md5 or old_version ~= new_version then
+					curl(url_main .. "/cdn.txt", "/tmp/chnlist_tmp")
+					local download_md5 = luci.sys.exec("echo -n $([ -f '/tmp/chnlist_tmp' ] && md5sum /tmp/chnlist_tmp | awk '{print $1}')")
+					if download_md5 == new_md5 then
+						luci.sys.exec("mv -f /tmp/chnlist_tmp " .. rule_path .. "/chnlist")
+						ucic:set(name, ucic:get_first(name, 'global_rules'), "chnlist_version", new_version)
+						reboot = 1
+						log("更新chnlist成功...")
+					end
+				else
+					log("chnlist版本一致，不用更新。")
+				end
+			else
+				log("chnlist文件下载失败！")
+			end
+		end
+	else
+		log("版本信息下载失败！")
 	end
 end
 
