@@ -17,6 +17,7 @@ DNSMASQ_PATH=/etc/dnsmasq.d
 RESOLVFILE=/tmp/resolv.conf.d/resolv.conf.auto
 DNS_PORT=7913
 LUA_API_PATH=/usr/lib/lua/luci/model/cbi/$CONFIG/api
+API_GEN_SS=$LUA_API_PATH/gen_shadowsocks.lua
 API_GEN_TROJAN=$LUA_API_PATH/gen_trojan.lua
 API_GEN_V2RAY=$LUA_API_PATH/gen_v2ray.lua
 API_GEN_V2RAY_BALANCING=$LUA_API_PATH/gen_v2ray_balancing.lua
@@ -235,44 +236,6 @@ load_config() {
 	return 0
 }
 
-gen_ss_ssr_config_file() {
-	local type local_port kcptun node configfile
-	type=$1
-	local_port=$2
-	kcptun=$3
-	node=$4
-	configfile=$5
-	local port encrypt_method
-	port=$(config_n_get $node port)
-	encrypt_method=$(config_n_get $node ss_encrypt_method)
-	[ "$type" == "ssr" ] && encrypt_method=$(config_n_get $node ssr_encrypt_method)
-	[ "$kcptun" == "1" ] && {
-		server_host=127.0.0.1
-		port=$KCPTUN_REDIR_PORT
-	}
-	cat <<-EOF >$configfile
-		{
-		    "server": "$server_host",
-		    "server_port": $port,
-		    "local_address": "0.0.0.0",
-		    "local_port": $local_port,
-		    "password": "$(config_n_get $node password)",
-		    "timeout": $(config_n_get $node timeout),
-		    "method": "$encrypt_method",
-		    "fast_open": $(config_n_get $node tcp_fast_open false),
-		    "reuse_port": true,
-	EOF
-	[ "$1" == "ssr" ] && {
-		cat <<-EOF >>$configfile
-		    "protocol": "$(config_n_get $node protocol)",
-		    "protocol_param": "$(config_n_get $node protocol_param)",
-		    "obfs": "$(config_n_get $node obfs)",
-		    "obfs_param": "$(config_n_get $node obfs_param)"
-		EOF
-	}
-	echo -e "}" >>$configfile
-}
-
 gen_start_config() {
 	local node local_port redir_type config_file bind server_host port type
 	node=$1
@@ -321,10 +284,10 @@ gen_start_config() {
 			}
 			ln_start_bin $(config_t_get global_app brook_file $(find_bin brook)) brook_socks_$5 "$protocol -l $bind:$local_port -i $$bind -s $server_host:$port -p $(config_n_get $node password)"
 		elif [ "$type" == "ssr" ]; then
-			gen_ss_ssr_config_file ssr $local_port 0 $node $config_file
+			lua $API_GEN_SS $node $local_port >$config_file
 			ln_start_bin $(find_bin ssr-local) ssr-local_socks_$5 "-c $config_file -b $bind -u"
 		elif [ "$type" == "ss" ]; then
-			gen_ss_ssr_config_file ss $local_port 0 $node $config_file
+			lua $API_GEN_SS $node $local_port >$config_file
 			local plugin_params=""
 			local plugin=$(config_n_get $node ss_plugin)
 			if [ "$plugin" != "none" ]; then
@@ -379,10 +342,10 @@ gen_start_config() {
 				ln_start_bin $(config_t_get global_app brook_file $(find_bin brook)) brook_udp_$5 "tproxy -l 0.0.0.0:$local_port -s $server_host:$port -p $(config_n_get $node password)"
 			fi
 		elif [ "$type" == "ssr" ]; then
-			gen_ss_ssr_config_file ssr $local_port 0 $node $config_file
+			lua $API_GEN_SS $node $local_port >$config_file
 			ln_start_bin $(find_bin ssr-redir) ssr-redir_udp_$5 "-c $config_file -U"
 		elif [ "$type" == "ss" ]; then
-			gen_ss_ssr_config_file ss $local_port 0 $node $config_file
+			lua $API_GEN_SS $node $local_port >$config_file
 			local plugin_params=""
 			local plugin=$(config_n_get $node ss_plugin)
 			if [ "$plugin" != "none" ]; then
@@ -439,12 +402,20 @@ gen_start_config() {
 				fi
 			fi
 			if [ "$type" == "ssr" ]; then
-				gen_ss_ssr_config_file ssr $local_port $kcptun_use $node $config_file
+				if [ "$kcptun_use" == "1" ]; then
+					lua $API_GEN_SS $node $local_port 127.0.0.1 $KCPTUN_REDIR_PORT >$config_file
+				else
+					lua $API_GEN_SS $node $local_port >$config_file
+				fi
 				for k in $(seq 1 $process); do
 					ln_start_bin $(find_bin ssr-redir) ssr-redir_tcp_$5 "-c $config_file"
 				done
 			elif [ "$type" == "ss" ]; then
-				gen_ss_ssr_config_file ss $local_port $kcptun_use $node $config_file
+				if [ "$kcptun_use" == "1" ]; then
+					lua $API_GEN_SS $node $local_port 127.0.0.1 $KCPTUN_REDIR_PORT >$config_file
+				else
+					lua $API_GEN_SS $node $local_port >$config_file
+				fi
 				local plugin_params=""
 				local plugin=$(config_n_get $node ss_plugin)
 				if [ "$plugin" != "none" ]; then

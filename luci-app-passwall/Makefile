@@ -7,8 +7,13 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-passwall
 PKG_VERSION:=3.6
+<<<<<<< HEAD
 PKG_RELEASE:=48
 PKG_DATE:=20200511
+=======
+PKG_RELEASE:=50
+PKG_DATE:=20200514
+>>>>>>> 1b2cd63c1e45a9ced1fcdd5f92e31f0fc0745d39
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
@@ -22,11 +27,15 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_ipt2socks
 	default y
 	
 config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks
-	bool "Include Shadowsocks Redir (ss-redir)"
+	bool "Include Shadowsocks"
 	default n
 	
 config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR
+<<<<<<< HEAD
 	bool "Include ShadowsocksR Redir (ssr-redir)"
+=======
+	bool "Include ShadowsocksR"
+>>>>>>> 1b2cd63c1e45a9ced1fcdd5f92e31f0fc0745d39
 	default y
 	
 config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray
