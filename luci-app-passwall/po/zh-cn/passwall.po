@@ -274,12 +274,9 @@ msgstr "请输入正确的链接，ss:// ssr:// vmess:// trojan://"
 msgid "Clear all nodes"
 msgstr "清空所有节点"
 
-<<<<<<< HEAD
-=======
 msgid "Are you sure to clear all nodes?"
 msgstr "你确定要清空所有节点吗？"
 
->>>>>>> 1b2cd63c1e45a9ced1fcdd5f92e31f0fc0745d39
 msgid "Are you sure set to"
 msgstr "你确定要设为"
 
