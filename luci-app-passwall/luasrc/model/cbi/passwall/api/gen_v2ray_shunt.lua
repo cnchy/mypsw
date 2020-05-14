@@ -16,7 +16,7 @@ local function gen_outbound(node, tag)
     if node then
         local node_id = node[".name"]
         if node.type ~= "V2ray" then
-            if node.type == "Socks5" then
+            if node.type == "Socks" then
                 node.v2ray_protocol = "socks"
                 node.v2ray_transport = "tcp"
             else

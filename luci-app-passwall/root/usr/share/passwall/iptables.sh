@@ -219,8 +219,8 @@ filter_node() {
 			fi
 		}
 	}
-	local tmp_type=$(echo $(config_n_get $1 type) | tr 'A-Z' 'a-z')
-	if [ "$tmp_type" == "v2ray_shunt" ]; then
+	local v2ray_protocol=$(config_n_get $1 v2ray_protocol)
+	if [ "$v2ray_protocol" == "v2ray_shunt" ]; then
 		local default_node=$(config_n_get $1 default_node nil)
 		filter_rules $default_node $2
 		local default_node_address=$(get_host_ip ipv4 $(config_n_get $default_node address) 1)
@@ -247,8 +247,7 @@ filter_node() {
 			}
 		}
 		filter_rules $(config_n_get $1 netflix_node) $2 $netflix_proxy $3
-		
-	elif [ "$tmp_type" == "v2ray_balancing" ]; then
+	elif [ "$v2ray_protocol" == "v2ray_balancing" ]; then
 		local balancing_node=$(config_n_get $1 v2ray_balancing_node)
 		for node_id in $balancing_node
 		do

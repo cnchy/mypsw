@@ -262,16 +262,17 @@ gen_start_config() {
 
 	if [ "$redir_type" == "SOCKS" ]; then
 		eval SOCKS_NODE${5}_PORT=$port
-		if [ "$type" == "socks5" ]; then
+		if [ "$type" == "socks" ]; then
 			echolog "Socks节点不能使用Socks代理节点！"
 		elif [ "$type" == "v2ray" ]; then
-			lua $API_GEN_V2RAY $node nil nil $local_port >$config_file
-			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_socks_$5 "-config=$config_file"
-		elif [ "$type" == "v2ray_balancing" ]; then
-			lua $API_GEN_V2RAY_BALANCING $node nil nil $local_port >$config_file
-			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_socks_$5 "-config=$config_file"
-		elif [ "$type" == "v2ray_shunt" ]; then
-			lua $API_GEN_V2RAY_SHUNT $node nil nil $local_port >$config_file
+			v2ray_protocol=$(config_n_get $node v2ray_protocol)
+			if [ "$v2ray_protocol" == "_balancing" ]; then
+				lua $API_GEN_V2RAY_BALANCING $node nil nil $local_port >$config_file
+			elif [ "$v2ray_protocol" == "_shunt" ]; then
+				lua $API_GEN_V2RAY_SHUNT $node nil nil $local_port >$config_file
+			else
+				lua $API_GEN_V2RAY $node nil nil $local_port >$config_file
+			fi
 			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_socks_$5 "-config=$config_file"
 		elif [ "$type" == "trojan" ]; then
 			lua $API_GEN_TROJAN $node client $bind $local_port >$config_file
@@ -305,21 +306,22 @@ gen_start_config() {
 	if [ "$redir_type" == "UDP" ]; then
 		eval UDP_NODE${5}_PORT=$port
 		
-		if [ "$type" == "socks5" ]; then
+		if [ "$type" == "socks" ]; then
 			local node_address=$(config_n_get $node address)
 			local node_port=$(config_n_get $node port)
 			local server_username=$(config_n_get $node username)
 			local server_password=$(config_n_get $node password)
 			eval port=\$UDP_REDIR_PORT$5
-			ln_start_bin $(find_bin ipt2socks) ipt2socks_udp_$5 "-4 -U -l $port -b 0.0.0.0 -s $node_address -p $node_port -R"
+			ln_start_bin $(find_bin ipt2socks) ipt2socks_udp_$5 "-U -l $port -b 0.0.0.0 -s $node_address -p $node_port -R"
 		elif [ "$type" == "v2ray" ]; then
-			lua $API_GEN_V2RAY $node udp $local_port nil >$config_file
-			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_udp_$5 "-config=$config_file"
-		elif [ "$type" == "v2ray_balancing" ]; then
-			lua $API_GEN_V2RAY_BALANCING $node udp $local_port nil >$config_file
-			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_udp_$5 "-config=$config_file"
-		elif [ "$type" == "v2ray_shunt" ]; then
-			lua $API_GEN_V2RAY_SHUNT $node udp $local_port nil >$config_file
+			v2ray_protocol=$(config_n_get $node v2ray_protocol)
+			if [ "$v2ray_protocol" == "_balancing" ]; then
+				lua $API_GEN_V2RAY_BALANCING $node udp $local_port nil >$config_file
+			elif [ "$v2ray_protocol" == "_shunt" ]; then
+				lua $API_GEN_V2RAY_SHUNT $node udp $local_port nil >$config_file
+			else
+				lua $API_GEN_V2RAY $node udp $local_port nil >$config_file
+			fi
 			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_udp_$5 "-config=$config_file"
 		elif [ "$type" == "trojan" ]; then
 			SOCKS_REDIR_PORT4=$(expr $SOCKS_REDIR_PORT3 + 1)
@@ -333,7 +335,7 @@ gen_start_config() {
 			local server_username=$(config_n_get $node username)
 			local server_password=$(config_n_get $node password)
 			eval port=\$UDP_REDIR_PORT$5
-			ln_start_bin $(find_bin ipt2socks) ipt2socks_udp_$5 "-4 -U -l $port -b 0.0.0.0 -s 127.0.0.1 -p $socks_port -R"
+			ln_start_bin $(find_bin ipt2socks) ipt2socks_udp_$5 "-U -l $port -b 0.0.0.0 -s 127.0.0.1 -p $socks_port -R"
 		elif [ "$type" == "brook" ]; then
 			local protocol=$(config_n_get $node brook_protocol client)
 			if [ "$protocol" == "wsclient" ]; then
@@ -363,21 +365,22 @@ gen_start_config() {
 	if [ "$redir_type" == "TCP" ]; then
 		eval TCP_NODE${5}_PORT=$port
 		
-		if [ "$type" == "socks5" ]; then
+		if [ "$type" == "socks" ]; then
 			local node_address=$(config_n_get $node address)
 			local node_port=$(config_n_get $node port)
 			local server_username=$(config_n_get $node username)
 			local server_password=$(config_n_get $node password)
 			eval port=\$TCP_REDIR_PORT$5
-			ln_start_bin $(find_bin ipt2socks) ipt2socks_tcp_$5 "-4 -T -l $port -b 0.0.0.0 -s $node_address -p $node_port -R"
+			ln_start_bin $(find_bin ipt2socks) ipt2socks_tcp_$5 "-T -l $port -b 0.0.0.0 -s $node_address -p $node_port -R"
 		elif [ "$type" == "v2ray" ]; then
-			lua $API_GEN_V2RAY $node tcp $local_port nil >$config_file
-			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_tcp_$5 "-config=$config_file"
-		elif [ "$type" == "v2ray_balancing" ]; then
-			lua $API_GEN_V2RAY_BALANCING $node tcp $local_port nil >$config_file
-			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_tcp_$5 "-config=$config_file"
-		elif [ "$type" == "v2ray_shunt" ]; then
-			lua $API_GEN_V2RAY_SHUNT $node tcp $local_port nil >$config_file
+			v2ray_protocol=$(config_n_get $node v2ray_protocol)
+			if [ "$v2ray_protocol" == "_balancing" ]; then
+				lua $API_GEN_V2RAY_BALANCING $node tcp $local_port nil >$config_file
+			elif [ "$v2ray_protocol" == "_shunt" ]; then
+				lua $API_GEN_V2RAY_SHUNT $node tcp $local_port nil >$config_file
+			else
+				lua $API_GEN_V2RAY $node tcp $local_port nil >$config_file
+			fi
 			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_tcp_$5 "-config=$config_file"
 		elif [ "$type" == "trojan" ]; then
 			lua $API_GEN_TROJAN $node nat "0.0.0.0" $local_port >$config_file
@@ -438,7 +441,7 @@ gen_start_config() {
 					socks_port=$(get_new_port $(expr $SOCKS_REDIR_PORT3 + 3) tcp)
 					ln_start_bin $(config_t_get global_app brook_file $(find_bin brook)) brook_tcp_$5 "wsclient -l 127.0.0.1:$socks_port -i 127.0.0.1 -s $server_ip:$port -p $(config_n_get $node password)"
 					eval port=\$TCP_REDIR_PORT$5
-					ln_start_bin $(find_bin ipt2socks) ipt2socks_tcp_$5 "-4 -T -l $port -b 0.0.0.0 -s 127.0.0.1 -p $socks5_port -R"
+					ln_start_bin $(find_bin ipt2socks) ipt2socks_tcp_$5 "-T -l $port -b 0.0.0.0 -s 127.0.0.1 -p $socks_port -R"
 					echolog "Brook的WebSocket不支持透明代理，将使用ipt2socks转换透明代理！"
 				else
 					[ "$kcptun_use" == "1" ] && {

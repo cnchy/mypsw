@@ -70,6 +70,14 @@ if api.uci_get_type("global_other", "compact_display_nodes", "0") == "1" then
         local group = api.uci_get_type_id(n, "group") or ""
         local remarks = api.uci_get_type_id(n, "remarks") or ""
         local type = api.uci_get_type_id(n, "type") or ""
+        if type == "V2ray" then
+            local protocol = api.uci_get_type_id(n, "v2ray_protocol","")
+            if protocol == "_balancing" then
+                type = type .. " 负载均衡"
+            elseif protocol == "_shunt" then
+                type = type .. " 分流"
+            end
+        end
         local address = api.uci_get_type_id(n, "address") or ""
         local port = api.uci_get_type_id(n, "port") or ""
         str = str .. translate(type) .. "：" .. remarks
@@ -97,8 +105,20 @@ else
     ---- Type
     o = s:option(DummyValue, "type", translate("Type"))
     o.cfgvalue = function(t, n)
+        local result = ""
         local v = Value.cfgvalue(t, n)
-        if v then return translate(v) end
+        if v then
+            result = translate(v)
+            if v == "V2ray" then
+                local protocol = api.uci_get_type_id(n, "v2ray_protocol","")
+                if protocol == "_balancing" then
+                    result = result .. " 负载均衡"
+                elseif protocol == "_shunt" then
+                    result = result .. " 分流"
+                end
+            end
+        end
+        return result
     end
 
     ---- Remarks

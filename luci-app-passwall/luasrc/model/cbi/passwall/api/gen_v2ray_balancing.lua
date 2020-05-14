@@ -16,14 +16,12 @@ local function gen_outbound(node)
     if node then
         local node_id = node[".name"]
         if node.type ~= "V2ray" then
-            if node.type == "Socks5" then
+            if node.type == "Socks" then
                 node.v2ray_protocol = "socks"
                 node.v2ray_transport = "tcp"
             else
-                local node_type = (proto and proto ~= "nil") and proto or
-                                      "socks"
-                local new_port = sys.exec(
-                                     "echo -n $(/usr/share/passwall/app.sh get_new_port auto tcp)")
+                local node_type = (proto and proto ~= "nil") and proto or "socks"
+                local new_port = sys.exec("echo -n $(/usr/share/passwall/app.sh get_new_port auto tcp)")
                 node.port = new_port
                 sys.call(string.format(
                              "/usr/share/passwall/app.sh gen_start_config %s %s %s %s %s %s",

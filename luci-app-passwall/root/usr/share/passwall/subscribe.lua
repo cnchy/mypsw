@@ -109,7 +109,7 @@ do
 	end
 
 	ucic2:foreach(application, uciType, function(node)
-		if node.type == 'V2ray_shunt' then
+		if node.type == 'V2ray' and node.v2ray_protocol == '_shunt' then
 			local node_id = node[".name"]
 			local youtube_node_id = node.youtube_node
 			local netflix_node_id = node.netflix_node
@@ -151,7 +151,7 @@ do
 					ucic2:set(application, node_id, "default_node", server)
 				end
 			}
-		elseif node.type == 'V2ray_balancing' then
+		elseif node.type == 'V2ray' and node.v2ray_protocol == '_balancing' then
 			local node_id = node[".name"]
 			local nodes = {}
 			local new_nodes = {}
@@ -516,7 +516,7 @@ local function select_node(nodes, config)
 	local server
 	if config.currentNode then
 		-- 特别优先级 V2ray分流 + 备注
-		if config.currentNode.type == 'V2ray_shunt' then
+		if config.currentNode.type == 'V2ray' and config.currentNode.v2ray_protocol == '_shunt' then
 			for id, node in pairs(nodes) do
 				if node.remarks == config.currentNode.remarks then
 					log('选择【' .. config.remarks .. '】V2ray分流匹配节点：' .. node.remarks)
@@ -526,7 +526,7 @@ local function select_node(nodes, config)
 			end
 		end
 		-- 特别优先级 V2ray负载均衡 + 备注
-		if config.currentNode.type == 'V2ray_balancing' then
+		if config.currentNode.type == 'V2ray' and config.currentNode.v2ray_protocol == '_balancing' then
 			for id, node in pairs(nodes) do
 				if node.remarks == config.currentNode.remarks then
 					log('选择【' .. config.remarks .. '】V2ray负载均衡匹配节点：' .. node.remarks)
@@ -631,9 +631,7 @@ local function update_node(manual)
 		local nodes = {}
 		local ucic3 = uci.cursor()
 		ucic3:foreach(application, uciType, function(node)
-			if (node.port and node.address and node.remarks) or node.type == 'V2ray_shunt' or node.type == 'V2ray_balancing' then
-				nodes[node['.name']] = node
-			end
+			nodes[node['.name']] = node
 		end)
 		for _, config in pairs(CONFIG) do
 			if config.nodes and type(config.nodes) == "table" then
