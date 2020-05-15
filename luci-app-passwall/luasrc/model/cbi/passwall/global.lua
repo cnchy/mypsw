@@ -153,13 +153,10 @@ o:depends("dns_mode", "chinadns-ng")
 end
 --]]
 
-<<<<<<< HEAD
-=======
 o = s:option(Flag, "fair_mode", translate("Fair Mode"))
 o.default = "1"
 o:depends({dns_mode = "chinadns-ng"})
 
->>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 ---- DNS Forward
 o = s:option(Value, "dns_forward", translate("DNS Address"))
 o.default = "8.8.4.4"
@@ -171,8 +168,6 @@ o:depends({dns_mode = "chinadns-ng"})
 o:depends({dns_mode = "dns2socks"})
 o:depends({dns_mode = "pdnsd"})
 
-<<<<<<< HEAD
-=======
 o = s:option(Flag, "dns_cache", translate("DNS Cache"))
 o.default = "1"
 o:depends({dns_mode = "chinadns-ng", up_trust_chinadns_ng_dns = "pdnsd"})
@@ -180,7 +175,6 @@ o:depends({dns_mode = "chinadns-ng", up_trust_chinadns_ng_dns = "dns2socks"})
 o:depends({dns_mode = "dns2socks"})
 o:depends({dns_mode = "pdnsd"})
 
->>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 ---- TCP Default Proxy Mode
 o = s:option(ListValue, "tcp_proxy_mode",
              "TCP" .. translate("Default") .. translate("Proxy Mode"))

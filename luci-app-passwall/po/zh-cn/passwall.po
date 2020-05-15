@@ -154,11 +154,6 @@ msgstr "使用UDP节点解析DNS"
 msgid "If checked, DNS is resolved using the TCP node."
 msgstr "如果勾选，则使用TCP节点解析DNS解决污染。"
 
-<<<<<<< HEAD
-msgid "DNS Address"
-msgstr "DNS地址"
-
-=======
 msgid "Fair Mode"
 msgstr "公平模式"
 
@@ -168,7 +163,6 @@ msgstr "DNS地址"
 msgid "DNS Cache"
 msgstr "DNS缓存"
 
->>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 msgid "China DNS Server"
 msgstr "国内DNS服务器"
 
