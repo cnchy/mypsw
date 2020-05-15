@@ -203,6 +203,10 @@ load_config() {
 	
 	DNS_MODE=$(config_t_get global dns_mode pdnsd)
 	DNS_FORWARD=$(config_t_get global dns_forward 8.8.4.4)
+<<<<<<< HEAD
+=======
+	DNS_CACHE=$(config_t_get global dns_cache 1)
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 	use_tcp_node_resolve_dns=0
 	use_udp_node_resolve_dns=0
 	process=1
@@ -570,7 +574,12 @@ start_dns() {
 		if [ -n "$SOCKS_NODE1" -a "$SOCKS_NODE1" != "nil" ]; then
 			DNS2SOCKS_FORWARD=$(echo $DNS_FORWARD | awk -F ',' '{print $1}')
 			[ -z "$DNS2SOCKS_FORWARD" ] && DNS2SOCKS_FORWARD="8.8.4.4"
+<<<<<<< HEAD
 			ln_start_bin $(find_bin dns2socks) dns2socks "127.0.0.1:$SOCKS_REDIR_PORT1 $DNS2SOCKS_FORWARD 127.0.0.1:$DNS_PORT"
+=======
+			[ "$DNS_CACHE" == "0" ] && local _cache="/d"
+			ln_start_bin $(find_bin dns2socks) dns2socks "127.0.0.1:$SOCKS_REDIR_PORT1 $DNS2SOCKS_FORWARD 127.0.0.1:$DNS_PORT $_cache"
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 			echolog "DNS：dns2socks..."
 		else
 			echolog "DNS：dns2socks模式需要使用Socks代理节点，请开启！"
@@ -582,7 +591,11 @@ start_dns() {
 			echolog "DNS：pdnsd 模式需要启用TCP节点！"
 			force_stop
 		else
+<<<<<<< HEAD
 			gen_pdnsd_config $DNS_PORT 2048
+=======
+			gen_pdnsd_config $DNS_PORT
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 			ln_start_bin $(find_bin pdnsd) pdnsd "--daemon -c $pdnsd_dir/pdnsd.conf -d"
 			echolog "DNS：pdnsd + 使用TCP节点解析DNS（$DNS_FORWARD）..."
 			DNS_FORWARD=$(echo $DNS_FORWARD | sed 's/,/ /g')
@@ -598,18 +611,37 @@ start_dns() {
 		[ -f "$RULES_PATH/chnlist" ] && cp -a $RULES_PATH/chnlist $TMP_PATH/chnlist
 		[ -f "$TMP_PATH/chnlist" ] && {
 			[ -f "$RULES_PATH/whitelist_host" -a -s "$RULES_PATH/whitelist_host" ] && cat $RULES_PATH/whitelist_host >> $TMP_PATH/chnlist
+<<<<<<< HEAD
 			local chnlist_param="-m $TMP_PATH/chnlist -M -f"
 		}
 		
+=======
+			local chnlist_param="-m $TMP_PATH/chnlist -M"
+		}
+		
+		local fair_mode=$(config_t_get global fair_mode 1)
+		if [ "$fair_mode" == "1" ]; then
+			fair_mode="-f"
+		else
+			fair_mode=""
+		fi
+		
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 		up_trust_chinadns_ng_dns=$(config_t_get global up_trust_chinadns_ng_dns "pdnsd")
 		if [ "$up_trust_chinadns_ng_dns" == "pdnsd" ]; then
 			if [ -z "$TCP_NODE1" -o "$TCP_NODE1" == "nil" ]; then
 				echolog "DNS：ChinaDNS-NG + pdnsd 模式需要启用TCP节点！"
 				force_stop
 			else
+<<<<<<< HEAD
 				gen_pdnsd_config $other_port 0
 				ln_start_bin $(find_bin pdnsd) pdnsd "--daemon -c $pdnsd_dir/pdnsd.conf -d"
 				ln_start_bin $(find_bin chinadns-ng) chinadns-ng "-l $DNS_PORT -c $UP_CHINA_DNS -t 127.0.0.1#$other_port $gfwlist_param $chnlist_param"
+=======
+				gen_pdnsd_config $other_port
+				ln_start_bin $(find_bin pdnsd) pdnsd "--daemon -c $pdnsd_dir/pdnsd.conf -d"
+				ln_start_bin $(find_bin chinadns-ng) chinadns-ng "-l $DNS_PORT -c $UP_CHINA_DNS -t 127.0.0.1#$other_port $gfwlist_param $chnlist_param $fair_mode"
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 				echolog "DNS：ChinaDNS-NG + pdnsd($DNS_FORWARD)，国内DNS：$UP_CHINA_DNS"
 				DNS_FORWARD=$(echo $DNS_FORWARD | sed 's/,/ /g')
 			fi
@@ -617,8 +649,14 @@ start_dns() {
 			if [ -n "$SOCKS_NODE1" -a "$SOCKS_NODE1" != "nil" ]; then
 				DNS2SOCKS_FORWARD=$(echo $DNS_FORWARD | awk -F ',' '{print $1}')
 				[ -z "$DNS2SOCKS_FORWARD" ] && DNS2SOCKS_FORWARD="8.8.4.4"
+<<<<<<< HEAD
 				ln_start_bin $(find_bin dns2socks) dns2socks "127.0.0.1:$SOCKS_REDIR_PORT1 $DNS2SOCKS_FORWARD 127.0.0.1:$other_port"
 				ln_start_bin $(find_bin chinadns-ng) chinadns-ng "-l $DNS_PORT -c $UP_CHINA_DNS -t 127.0.0.1#$other_port $gfwlist_param $chnlist_param"
+=======
+				[ "$DNS_CACHE" == "0" ] && local _cache="/d"
+				ln_start_bin $(find_bin dns2socks) dns2socks "127.0.0.1:$SOCKS_REDIR_PORT1 $DNS2SOCKS_FORWARD 127.0.0.1:$other_port $_cache"
+				ln_start_bin $(find_bin chinadns-ng) chinadns-ng "-l $DNS_PORT -c $UP_CHINA_DNS -t 127.0.0.1#$other_port $gfwlist_param $chnlist_param $fair_mode"
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 				echolog "DNS：ChinaDNS-NG + dns2socks($DNS2SOCKS_FORWARD)，国内DNS：$UP_CHINA_DNS"
 			else
 				echolog "DNS：dns2socks模式需要使用Socks代理节点，请开启！"
@@ -626,7 +664,11 @@ start_dns() {
 			fi
 		elif [ "$up_trust_chinadns_ng_dns" == "udp" ]; then
 			use_udp_node_resolve_dns=1
+<<<<<<< HEAD
 			ln_start_bin $(find_bin chinadns-ng) chinadns-ng "-l $DNS_PORT -c $UP_CHINA_DNS -t $DNS_FORWARD $gfwlist_param $chnlist_param"
+=======
+			ln_start_bin $(find_bin chinadns-ng) chinadns-ng "-l $DNS_PORT -c $UP_CHINA_DNS -t $DNS_FORWARD $gfwlist_param $chnlist_param $fair_mode"
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 			echolog "DNS：ChinaDNS-NG，国内DNS：$UP_CHINA_DNS，可信DNS：$up_trust_chinadns_ng_dns，如果不能使用，请确保UDP节点已打开并且支持UDP转发。"
 			DNS_FORWARD=$(echo $DNS_FORWARD | sed 's/,/ /g')
 		fi
@@ -716,9 +758,18 @@ gen_pdnsd_config() {
 	mkdir -p $pdnsd_dir
 	touch $pdnsd_dir/pdnsd.cache
 	chown -R root.nogroup $pdnsd_dir
+<<<<<<< HEAD
 	cat > $pdnsd_dir/pdnsd.conf <<-EOF
 		global {
 			perm_cache = $2;
+=======
+	local perm_cache=2048
+	local _cache="on"
+	[ "$DNS_CACHE" == "0" ] && _cache="off" && perm_cache=0
+	cat > $pdnsd_dir/pdnsd.conf <<-EOF
+		global {
+			perm_cache = $perm_cache;
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 			cache_dir = "$pdnsd_dir";
 			run_as = "root";
 			server_ip = 127.0.0.1;
@@ -747,6 +798,10 @@ gen_pdnsd_config() {
 			interval = 10m;
 			uptest = none;
 			purge_cache = off;
+<<<<<<< HEAD
+=======
+			caching = $_cache;
+>>>>>>> 23e37c13119cf3fe21d878f0ced645261bb77fc4
 		}
 		
 	EOF
