@@ -14,6 +14,11 @@ command_timeout = 300
 LEDE_BOARD = nil
 DISTRIB_TARGET = nil
 
+function gen_uuid()
+    local uuid = string.gsub(sys.exec("echo -n $(cat /proc/sys/kernel/random/uuid)"), "-", "")
+    return uuid
+end
+
 function uci_get_type(type, config, default)
     local value = uci:get_first(appname, type, config, default) or sys.exec(
                       "echo -n `uci -q get " .. appname .. ".@" .. type ..

@@ -120,7 +120,7 @@ function connect_status()
     if luci.http.formvalue("type") == "google" then
         url = "www.google.com/generate_204"
     end
-    local result = luci.sys.exec('curl --connect-timeout 5 -o /dev/null -s -w "%{http_code}:%{time_total}" ' .. url)
+    local result = luci.sys.exec('curl --connect-timeout 5 -o /dev/null -skL -w "%{http_code}:%{time_total}" ' .. url)
     local code = tonumber(luci.sys.exec("echo -n '" .. result .. "' | awk -F ':' '{print $1}'") or "0")
     if code ~= 0 then
         local use_time = luci.sys.exec("echo -n '" .. result .. "' | awk -F ':' '{print $2}'")

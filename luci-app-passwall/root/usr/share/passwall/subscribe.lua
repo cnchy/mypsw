@@ -8,6 +8,7 @@ require 'uci'
 require 'luci.util'
 require 'luci.jsonc'
 require 'luci.sys'
+local _api = require "luci.model.cbi.passwall.api.api"
 
 -- these global functions are accessed all the time by the event handler
 -- so caching them is worth the effort
@@ -620,6 +621,9 @@ local function update_node(manual)
 	for _, v in ipairs(nodeResult) do
 		for _, vv in ipairs(v) do
 			local cfgid = ucic2:add(application, uciType)
+			local uuid = _api.gen_uuid()
+			ucic2:rename(application, cfgid, uuid)
+			cfgid = uuid
 			for kkk, vvv in pairs(vv) do
 				ucic2:set(application, cfgid, kkk, vvv)
 			end

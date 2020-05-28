@@ -1,4 +1,8 @@
 local d = require "luci.dispatcher"
+<<<<<<< HEAD
+=======
+local _api = require "luci.model.cbi.passwall.api.api"
+>>>>>>> 91cc7a224f0757d1a9c5e13f4fd29f9be883bc1f
 local appname = "passwall"
 
 m = Map(appname)
@@ -39,14 +43,25 @@ s.addremove = true
 s.template = "cbi/tblsection"
 s.extedit = d.build_url("admin", "vpn", appname, "node_config", "%s")
 function s.create(e, t)
+<<<<<<< HEAD
     local e = TypedSection.create(e, t)
     luci.http
         .redirect(d.build_url("admin", "vpn", appname, "node_config", e))
+=======
+    local uuid = _api.gen_uuid()
+    t = uuid
+    TypedSection.create(e, t)
+    luci.http.redirect(e.extedit:format(t))
+>>>>>>> 91cc7a224f0757d1a9c5e13f4fd29f9be883bc1f
 end
 
-function s.remove(t, a)
+function s.remove(e, t)
     s.map.proceed = true
+<<<<<<< HEAD
     s.map:del(a)
+=======
+    s.map:del(t)
+>>>>>>> 91cc7a224f0757d1a9c5e13f4fd29f9be883bc1f
     luci.http.redirect(d.build_url("admin", "vpn", appname, "node_list"))
 end
 
