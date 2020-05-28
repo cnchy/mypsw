@@ -178,11 +178,7 @@ table td, .table .td {
 		}
 	}
 	
-<<<<<<< HEAD
-	const xhr = (index) => {
-=======
 	const _xhr = (index) => {
->>>>>>> 91cc7a224f0757d1a9c5e13f4fd29f9be883bc1f
 		return new Promise((res) => {
 			const dom = nodes[index];
 			if (!dom) res()
@@ -225,11 +221,7 @@ table td, .table .td {
 	const thread = () => {
 		task = task + 1
 		if (nodes[task]) {
-<<<<<<< HEAD
-			xhr(task).then(thread);
-=======
 			_xhr(task).then(thread);
->>>>>>> 91cc7a224f0757d1a9c5e13f4fd29f9be883bc1f
 		}
 	}
 	for (let i = 0; i < 20; i++) {
