@@ -2,7 +2,6 @@ local o = require "luci.dispatcher"
 local sys = require "luci.sys"
 local ipkg = require("luci.model.ipkg")
 local uci = require"luci.model.uci".cursor()
-local api = require "luci.model.cbi.passwall.api.api"
 local appname = "passwall"
 
 local function is_installed(e) return ipkg.installed(e) end
@@ -34,12 +33,11 @@ uci:foreach(appname, "nodes", function(e)
 end)
 
 m = Map(appname)
-local status_use_big_icon = api.uci_get_type("global_other",
-                                             "status_use_big_icon", 1)
+local status_use_big_icon = m:get("@global_other[0]", "status_use_big_icon") or 1
 if status_use_big_icon and tonumber(status_use_big_icon) == 1 then
-    m:append(Template("passwall/global/status"))
+    m:append(Template(appname .. "/global/status"))
 else
-    m:append(Template("passwall/global/status2"))
+    m:append(Template(appname .. "/global/status2"))
 end
 
 -- [[ Global Settings ]]--
@@ -53,7 +51,7 @@ o = s:option(Flag, "enabled", translate("Main switch"))
 o.rmempty = false
 
 ---- TCP Node
-local tcp_node_num = tonumber(api.uci_get_type("global_other", "tcp_node_num", 1))
+local tcp_node_num = tonumber(m:get("@global_other[0]", "tcp_node_num") or 1)
 for i = 1, tcp_node_num, 1 do
     if i == 1 then
         o = s:option(ListValue, "tcp_node" .. i, translate("TCP Node"))
@@ -67,7 +65,7 @@ for i = 1, tcp_node_num, 1 do
 end
 
 ---- UDP Node
-local udp_node_num = tonumber(api.uci_get_type("global_other", "udp_node_num", 1))
+local udp_node_num = tonumber(m:get("@global_other[0]", "udp_node_num") or 1)
 for i = 1, udp_node_num, 1 do
     if i == 1 then
         o = s:option(ListValue, "udp_node" .. i, translate("UDP Node"))
@@ -83,7 +81,7 @@ for i = 1, udp_node_num, 1 do
 end
 
 ---- Socks Node
-local socks_node_num = tonumber(api.uci_get_type("global_other","socks_node_num", 1))
+local socks_node_num = tonumber(m:get("@global_other[0]","socks_node_num") or 1)
 for i = 1, socks_node_num, 1 do
     if i == 1 then
         o = s:option(ListValue, "socks_node" .. i, translate("Socks Node"))
@@ -221,12 +219,12 @@ o.default = "default"
 o.rmempty = false
 
 ---- Tips
-s:append(Template("passwall/global/tips"))
+s:append(Template(appname .. "/global/tips"))
 
 --[[
 local apply = luci.http.formvalue("cbi.apply")
 if apply then
-os.execute("/etc/init.d/passwall restart")
+os.execute("/etc/init.d/" .. appname .." restart")
 end
 --]]
 

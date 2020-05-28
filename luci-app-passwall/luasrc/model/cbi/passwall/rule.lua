@@ -1,8 +1,10 @@
-m = Map("passwall")
+local appname = "passwall"
+
+m = Map(appname)
 -- [[ Rule Settings ]]--
 s = m:section(TypedSection, "global_rules", translate("Rule status"))
 s.anonymous = true
-s:append(Template("passwall/rule/rule_version"))
+s:append(Template(appname .. "/rule/rule_version"))
 
 --[[
 o = s:option(Flag, "adblock", translate("Enable adblock"))
@@ -53,9 +55,9 @@ s = m:section(TypedSection, "global_app", translate("App Update"),
                   translate("Please confirm that your firmware supports FPU.") ..
                   "</font>")
 s.anonymous = true
-s:append(Template("passwall/rule/v2ray_version"))
-s:append(Template("passwall/rule/kcptun_version"))
-s:append(Template("passwall/rule/brook_version"))
+s:append(Template(appname .. "/rule/v2ray_version"))
+s:append(Template(appname .. "/rule/kcptun_version"))
+s:append(Template(appname .. "/rule/brook_version"))
 
 ---- V2ray Path
 o = s:option(Value, "v2ray_file", translate("V2ray Path"), translate(
@@ -72,7 +74,7 @@ o.rmempty = false
 
 --[[
 o = s:option(Button,  "_check_kcptun",  translate("Manually update"), translate("Make sure there is enough space to install Kcptun"))
-o.template = "passwall/kcptun"
+o.template = appname .. "/kcptun"
 o.inputstyle = "apply"
 o.btnclick = "onBtnClick_kcptun(this);"
 o.id = "_kcptun-check_btn"]] --

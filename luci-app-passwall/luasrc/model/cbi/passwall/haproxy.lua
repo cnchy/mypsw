@@ -22,7 +22,7 @@ m = Map(appname)
 s = m:section(TypedSection, "global_haproxy", translate("Load Balancing"))
 s.anonymous = true
 
-s:append(Template("passwall/haproxy/status"))
+s:append(Template(appname .. "/haproxy/status"))
 
 ---- Balancing Enable
 o = s:option(Flag, "balancing_enable", translate("Enable Load Balancing"))

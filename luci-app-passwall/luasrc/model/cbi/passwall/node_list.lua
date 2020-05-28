@@ -1,5 +1,4 @@
 local d = require "luci.dispatcher"
-local api = require "luci.model.cbi.passwall.api.api"
 local appname = "passwall"
 
 m = Map(appname)
@@ -31,55 +30,55 @@ o = s:option(Flag, "show_group", translate("Show Group"))
 o.default = 1
 
 -- [[ Add the node via the link ]]--
-s:append(Template("passwall/node_list/link_add_node"))
+s:append(Template(appname .. "/node_list/link_add_node"))
 
 -- [[ Node List ]]--
 s = m:section(TypedSection, "nodes")
 s.anonymous = true
 s.addremove = true
 s.template = "cbi/tblsection"
-s.extedit = d.build_url("admin", "vpn", "passwall", "node_config", "%s")
+s.extedit = d.build_url("admin", "vpn", appname, "node_config", "%s")
 function s.create(e, t)
     local e = TypedSection.create(e, t)
     luci.http
-        .redirect(d.build_url("admin", "vpn", "passwall", "node_config", e))
+        .redirect(d.build_url("admin", "vpn", appname, "node_config", e))
 end
 
 function s.remove(t, a)
     s.map.proceed = true
     s.map:del(a)
-    luci.http.redirect(d.build_url("admin", "vpn", "passwall", "node_list"))
+    luci.http.redirect(d.build_url("admin", "vpn", appname, "node_list"))
 end
 
-if api.uci_get_type("global_other", "show_group", "1") == "1" then
+if m:get("@global_other[0]", "show_group") == "1" then
     show_group = s:option(DummyValue, "group", translate("Group"))
     show_group.cfgvalue = function(t, n)
-        local group = api.uci_get_type_id(n, "group") or "无"
+        local group = m:get(n, "group") or "无"
         return group ~= "" and group or "无"
     end
 end
 
 s.sortable = true
 -- 简洁模式
-if api.uci_get_type("global_other", "compact_display_nodes", "0") == "1" then
+if m:get("@global_other[0]", "compact_display_nodes") == "1" then
     if show_group then show_group.width = "25%" end
     o = s:option(DummyValue, "remarks", translate("Remarks"))
     o.cfgvalue = function(t, n)
         local str = ""
-        local is_sub = api.uci_get_type_id(n, "is_sub") or ""
-        local group = api.uci_get_type_id(n, "group") or ""
-        local remarks = api.uci_get_type_id(n, "remarks") or ""
-        local type = api.uci_get_type_id(n, "type") or ""
+        local is_sub = m:get(n, "is_sub") or ""
+        local group = m:get(n, "group") or ""
+        local remarks = m:get(n, "remarks") or ""
+        local type = m:get(n, "type") or ""
         if type == "V2ray" then
-            local protocol = api.uci_get_type_id(n, "v2ray_protocol","")
+            local protocol = m:get(n, "v2ray_protocol")
             if protocol == "_balancing" then
                 type = type .. " 负载均衡"
             elseif protocol == "_shunt" then
                 type = type .. " 分流"
             end
         end
-        local address = api.uci_get_type_id(n, "address") or ""
-        local port = api.uci_get_type_id(n, "port") or ""
+        local address = m:get(n, "address") or ""
+        local port = m:get(n, "port") or ""
         str = str .. translate(type) .. "：" .. remarks
         if address ~= "" and port ~= "" then
             local s = " （" .. address .. ":" .. port .. "）"
@@ -89,7 +88,7 @@ if api.uci_get_type("global_other", "compact_display_nodes", "0") == "1" then
     end
 else
     ---- Add Mode
-    if api.uci_get_type("global_other", "show_add_mode", "1") == "1" then
+    if m:get("@global_other[0]", "show_add_mode") == "1" then
         o = s:option(DummyValue, "add_mode", translate("Add Mode"))
         o.cfgvalue = function(t, n)
             local v = Value.cfgvalue(t, n)
@@ -110,7 +109,7 @@ else
         if v then
             result = translate(v)
             if v == "V2ray" then
-                local protocol = api.uci_get_type_id(n, "v2ray_protocol","")
+                local protocol = m:get(n, "v2ray_protocol")
                 if protocol == "_balancing" then
                     result = result .. " 负载均衡"
                 elseif protocol == "_shunt" then
@@ -135,32 +134,27 @@ else
     o.cfgvalue = function(t, n)
         return Value.cfgvalue(t, n) or "---"
     end
-
-    ---- Encrypt Method
---[[ o = s:option(DummyValue, "encrypt_method", translate("Encrypt Method"))
-     o.width = "15%"
-    o.cfgvalue = function(t, n)
-    local str = "无"
-    local type = api.uci_get_type_id(n, "type") or ""
-    if type == "SSR" then
-        return api.uci_get_type_id(n, "ssr_encrypt_method")
-    elseif type == "SS" then
-        return api.uci_get_type_id(n, "ss_encrypt_method")
-    elseif type == "V2ray" then
-        return api.uci_get_type_id(n, "v2ray_security")
-    end
-    return str
-end--]]
 end
 
 ---- Ping
 o = s:option(DummyValue, "ping", translate("Latency"))
-if api.uci_get_type("global_other", "auto_ping", "0") == "0" then
-    o.template = "passwall/node_list/ping"
+if m:get("@global_other[0]", "auto_ping") == "0" then
+    o.template = appname .. "/node_list/ping"
 else
-    o.template = "passwall/node_list/auto_ping"
+    o.template = appname .. "/node_list/auto_ping"
 end
+--[[
+o.cfgvalue = function(t, n)
+    local type = m:get(n, "type") or ""
+    if type == "V2ray" then
+        local protocol = m:get(n, "v2ray_protocol","")
+        if protocol == "_balancing" or protocol == "_shunt" then
+            return "---"
+        end
+    end
+end
+--]]
 
-m:append(Template("passwall/node_list/node_list"))
+m:append(Template(appname .. "/node_list/node_list"))
 
 return m
