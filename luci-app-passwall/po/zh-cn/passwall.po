@@ -103,9 +103,6 @@ msgstr "检测中..."
 msgid "Clear"
 msgstr "清除"
 
-msgid "If you can use it, very stable. If not, GG !!!"
-msgstr "如果你会用，稳得一批。否则，GG！！！"
-
 msgid "Main switch"
 msgstr "总开关"
 
@@ -265,6 +262,9 @@ msgstr "路由器自身"
 msgid "Danger"
 msgstr "危险"
 
+msgid "Operation"
+msgstr "操作"
+
 msgid "Add Node"
 msgstr "添加节点"
 
@@ -282,6 +282,24 @@ msgstr "清空所有节点"
 
 msgid "Are you sure to clear all nodes?"
 msgstr "你确定要清空所有节点吗？"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "Delete select nodes"
+msgstr "删除选择的节点"
+
+msgid "Select"
+msgstr "选择"
+
+msgid "DeSelect"
+msgstr "反选"
+
+msgid "Are you sure to delete select nodes?"
+msgstr "你确定要删除选择的节点吗？"
+
+msgid "You no select nodes !"
+msgstr "你没有选择任何节点！"
 
 msgid "Are you sure set to"
 msgstr "你确定要设为"
@@ -372,9 +390,6 @@ msgstr "选中后保存应用后即使用tcping替换ping检测节点"
 
 msgid "Concise display nodes"
 msgstr "简洁显示节点"
-
-msgid "Support for more than 10,000 ping nodes and luci does not crash and not slow."
-msgstr "支持超过10000个节点，而LuCI却不会卡死，更不会崩溃。"
 
 msgid "Apply"
 msgstr "应用"

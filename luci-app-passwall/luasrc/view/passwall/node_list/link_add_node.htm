@@ -80,13 +80,6 @@ local dsp = require "luci.dispatcher"
 	//]]>
 </script>
 
-<div class="cbi-value">
-	<label class="cbi-value-title"><%:Add Node%></label>
-	<div class="cbi-value-field">
-		<input class="cbi-button cbi-button-add" type="button" onclick="open_add_link_div()" value="<%:Add the node via the link%>" />
-	</div>
-</div>
-
 <div id="add_link_div">
 	<div class="cbi-value">
 		<label class="cbi-value-title"><%:SS/SSR/V2ray/Trojan Link%></label>
@@ -104,8 +97,22 @@ local dsp = require "luci.dispatcher"
 </div>
 
 <div class="cbi-value">
-	<label class="cbi-value-title"><%:Clear all nodes%></label>
+	<label class="cbi-value-title"><%:Operation%></label>
+	<div class="cbi-value-field">
+		<input class="cbi-button cbi-button-add" type="button" onclick="open_add_link_div()" value="<%:Add the node via the link%>" />
+	</div>
+</div>
+
+<div class="cbi-value">
+	<label class="cbi-value-title"></label>
 	<div class="cbi-value-field">
 		<input class="cbi-button cbi-button-remove" type="button" onclick="clear_all_nodes()" value="<%:Clear all nodes%>" />
+	</div>
+</div>
+
+<div class="cbi-value">
+	<label class="cbi-value-title"></label>
+	<div class="cbi-value-field">
+		<input class="cbi-button cbi-button-remove" type="button" onclick="delete_select_nodes()" value="<%:Delete select nodes%>" />
 	</div>
 </div>

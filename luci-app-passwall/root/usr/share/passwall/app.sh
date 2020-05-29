@@ -18,10 +18,8 @@ RESOLVFILE=/tmp/resolv.conf.d/resolv.conf.auto
 DNS_PORT=7913
 LUA_API_PATH=/usr/lib/lua/luci/model/cbi/$CONFIG/api
 API_GEN_SS=$LUA_API_PATH/gen_shadowsocks.lua
-API_GEN_TROJAN=$LUA_API_PATH/gen_trojan.lua
 API_GEN_V2RAY=$LUA_API_PATH/gen_v2ray.lua
-API_GEN_V2RAY_BALANCING=$LUA_API_PATH/gen_v2ray_balancing.lua
-API_GEN_V2RAY_SHUNT=$LUA_API_PATH/gen_v2ray_shunt.lua
+API_GEN_TROJAN=$LUA_API_PATH/gen_trojan.lua
 
 echolog() {
 	local d="$(date "+%Y-%m-%d %H:%M:%S")"
@@ -266,14 +264,7 @@ gen_start_config() {
 		if [ "$type" == "socks" ]; then
 			echolog "Socks节点不能使用Socks代理节点！"
 		elif [ "$type" == "v2ray" ]; then
-			v2ray_protocol=$(config_n_get $node v2ray_protocol)
-			if [ "$v2ray_protocol" == "_balancing" ]; then
-				lua $API_GEN_V2RAY_BALANCING $node nil nil $local_port >$config_file
-			elif [ "$v2ray_protocol" == "_shunt" ]; then
-				lua $API_GEN_V2RAY_SHUNT $node nil nil $local_port >$config_file
-			else
-				lua $API_GEN_V2RAY $node nil nil $local_port >$config_file
-			fi
+			lua $API_GEN_V2RAY $node nil nil $local_port >$config_file
 			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_socks_$5 "-config=$config_file"
 		elif [ "$type" == "trojan" ]; then
 			lua $API_GEN_TROJAN $node client $bind $local_port >$config_file
@@ -315,14 +306,7 @@ gen_start_config() {
 			eval port=\$UDP_REDIR_PORT$5
 			ln_start_bin $(find_bin ipt2socks) ipt2socks_udp_$5 "-U -l $port -b 0.0.0.0 -s $node_address -p $node_port -R"
 		elif [ "$type" == "v2ray" ]; then
-			v2ray_protocol=$(config_n_get $node v2ray_protocol)
-			if [ "$v2ray_protocol" == "_balancing" ]; then
-				lua $API_GEN_V2RAY_BALANCING $node udp $local_port nil >$config_file
-			elif [ "$v2ray_protocol" == "_shunt" ]; then
-				lua $API_GEN_V2RAY_SHUNT $node udp $local_port nil >$config_file
-			else
-				lua $API_GEN_V2RAY $node udp $local_port nil >$config_file
-			fi
+			lua $API_GEN_V2RAY $node udp $local_port nil >$config_file
 			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_udp_$5 "-config=$config_file"
 		elif [ "$type" == "trojan" ]; then
 			SOCKS_REDIR_PORT4=$(expr $SOCKS_REDIR_PORT3 + 1)
@@ -374,14 +358,7 @@ gen_start_config() {
 			eval port=\$TCP_REDIR_PORT$5
 			ln_start_bin $(find_bin ipt2socks) ipt2socks_tcp_$5 "-T -l $port -b 0.0.0.0 -s $node_address -p $node_port -R"
 		elif [ "$type" == "v2ray" ]; then
-			v2ray_protocol=$(config_n_get $node v2ray_protocol)
-			if [ "$v2ray_protocol" == "_balancing" ]; then
-				lua $API_GEN_V2RAY_BALANCING $node tcp $local_port nil >$config_file
-			elif [ "$v2ray_protocol" == "_shunt" ]; then
-				lua $API_GEN_V2RAY_SHUNT $node tcp $local_port nil >$config_file
-			else
-				lua $API_GEN_V2RAY $node tcp $local_port nil >$config_file
-			fi
+			lua $API_GEN_V2RAY $node tcp $local_port nil >$config_file
 			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_tcp_$5 "-config=$config_file"
 		elif [ "$type" == "trojan" ]; then
 			lua $API_GEN_TROJAN $node nat "0.0.0.0" $local_port >$config_file

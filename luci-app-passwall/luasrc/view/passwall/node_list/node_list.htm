@@ -20,7 +20,7 @@ table td, .table .td {
     word-break: keep-all;
 }
 
-#set_node_div{
+#set_node_div {
 	display: none;
 	width: 30rem;
 	position: fixed;
@@ -31,19 +31,28 @@ table td, .table .td {
 	background: white;
     box-shadow: darkgrey 10px 10px 30px 5px;
 }
+
+._select {
+	background: #dad8d8;
+}
 </style>
 
 <script type="text/javascript">
 	//<![CDATA[
 	var ajax = {
-		post: function(url, data, fn_success, fn_timeout) {
+		post: function(url, data, fn_success, timeout, fn_timeout) {
 			var xhr = new XMLHttpRequest();
 			var code = ajax.encode(data);
 			xhr.open("POST", url, true);
-			xhr.timeout = 1000;
 			xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-			xhr.ontimeout = function() {
-				fn_timeout(xhr);
+			
+			if (timeout && timeout > 1000) {
+				xhr.timeout = timeout;
+			}
+			if (fn_timeout) {
+				xhr.ontimeout = function() {
+					fn_timeout(xhr);
+				}
 			}
 			xhr.onreadystatechange = function() {
 				if(xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 304)) {
@@ -92,6 +101,53 @@ table td, .table .td {
 	function close_set_node_div() {
 		document.getElementById("set_node_div").style.display="none";
 		document.getElementById("set_node_name").innerHTML = "";
+	}
+	
+	function select_node_div(btn, id) {
+		btn.value = "<%:DeSelect%>";
+		btn.setAttribute("onclick", "deselect_node_div(this, '" + id + "')");
+		var dom = document.getElementById("cbi-passwall-" + id);
+		if (dom) {
+			dom.classList.add("_select");
+			dom.setAttribute("nodes_id", id);
+		}
+	}
+	
+	function deselect_node_div(btn, id) {
+		btn.value = "<%:Select%>";
+		btn.setAttribute("onclick", "select_node_div(this, '" + id + "')");
+		var dom = document.getElementById("cbi-passwall-" + id);
+		if (dom) {
+			dom.classList.remove("_select");
+			dom.removeAttribute("nodes_id");
+		}
+	}
+	
+	function delete_select_nodes() {
+		var doms = document.getElementsByClassName("_select");
+		if (doms && doms.length > 0) {
+			var ids = [];
+			for (var i = 0 ; i < doms.length; i++) {
+				if (doms[i].getAttribute("nodes_id")) {
+					ids.push(doms[i].getAttribute("nodes_id"))
+				}
+			}
+			if (confirm('<%:Are you sure to delete select nodes?%>') == true){
+				XHR.get('<%=dsp.build_url("admin/vpn/passwall/delete_select_nodes")%>', {
+					ids: ids.join()
+				},
+				function(x, data) {
+					if(x && x.status == 200) {
+						window.location.href = '<%=dsp.build_url("admin/vpn/passwall/node_list")%>';
+					}
+					else {
+						alert("<%:Error%>");
+					}
+				});
+			}
+		} else {
+			alert("<%:You no select nodes !%>");
+		}
 	}
 	
 	function set_node(protocol,number) {
@@ -151,9 +207,8 @@ table td, .table .td {
 		}
 	}
 	
-	var nodes = [];
-	
 	/* 自动Ping */
+	var nodes = [];
 	const auto_ping_value = document.getElementsByClassName('auto_ping_value');
 	for (var i = 0; i < auto_ping_value.length; i++) {
 		var cbi_id = auto_ping_value[i].getAttribute("cbiid");
@@ -206,6 +261,7 @@ table td, .table .td {
 					}
 					res();
 				},
+				5000,
 				function(x) {
 					var strs = dom.indexs.split(",");
 					for (var i = 0; i < strs.length; i++) {
@@ -275,15 +331,18 @@ table td, .table .td {
 	auto_ping();
 	*/
 	
-	//添加"应用"按钮到"修改"按钮前
 	var edit_btn = document.getElementById("cbi-passwall-nodes").getElementsByClassName("cbi-button cbi-button-edit");
 	for(var i = 0; i < edit_btn.length; i++) {
 		try {
 			var onclick_str = edit_btn[i].getAttribute("onclick");
 			var id = onclick_str.substring(onclick_str.lastIndexOf('/') + 1, onclick_str.length - 1);
 			var td = edit_btn[i].parentNode;
-			var apply = '<input class="cbi-button cbi-button-add" type="button" value="<%:Use%>" onclick="open_set_node_div(\'' + id + '\')" alt="<%:Use%>" title="<%:Use%>" />';
-			td.innerHTML = apply + "&nbsp;&nbsp;" + td.innerHTML;
+			var new_div = "";
+			//添加"选择"按钮到"修改"按钮前
+			new_div += '<input class="cbi-button cbi-button-add" type="button" value="<%:Select%>" onclick="select_node_div(this, \'' + id + '\')"/>&nbsp;&nbsp;';
+			//添加"应用"按钮到"修改"按钮前
+			new_div += '<input class="cbi-button cbi-button-apply" type="button" value="<%:Use%>" onclick="open_set_node_div(\'' + id + '\')"/>&nbsp;&nbsp;';
+			td.innerHTML = new_div + td.innerHTML;
 		}
 		catch(err) {
 			console.error(err);

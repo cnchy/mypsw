@@ -39,6 +39,7 @@ function index()
     entry({"admin", "vpn", "passwall", "set_node"}, call("set_node")).leaf = true
     entry({"admin", "vpn", "passwall", "copy_node"}, call("copy_node")).leaf = true
     entry({"admin", "vpn", "passwall", "clear_all_nodes"}, call("clear_all_nodes")).leaf = true
+    entry({"admin", "vpn", "passwall", "delete_select_nodes"}, call("delete_select_nodes")).leaf = true
     entry({"admin", "vpn", "passwall", "update_rules"}, call("update_rules")).leaf = true
     entry({"admin", "vpn", "passwall", "luci_check"}, call("luci_check")).leaf = true
     entry({"admin", "vpn", "passwall", "luci_update"}, call("luci_update")).leaf = true
@@ -181,6 +182,15 @@ function clear_all_nodes()
 	clear("udp")
 	clear("socks")
 
+    ucic:commit(appname)
+    luci.sys.call("/etc/init.d/" .. appname .. " restart")
+end
+
+function delete_select_nodes()
+    local ids = luci.http.formvalue("ids")
+    string.gsub(ids, '[^' .. "," .. ']+', function(w)
+        ucic:delete(appname, w)
+    end)
     ucic:commit(appname)
     luci.sys.call("/etc/init.d/" .. appname .. " restart")
 end
