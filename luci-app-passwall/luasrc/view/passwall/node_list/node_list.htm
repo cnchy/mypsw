@@ -5,7 +5,6 @@
 	
 	local tcp_node_num = api.uci_get_type("global_other", "tcp_node_num", 1)
 	local udp_node_num = api.uci_get_type("global_other", "udp_node_num", 1)
-	local socks_node_num = api.uci_get_type("global_other", "socks_node_num", 1)
 	local compact_display_nodes = api.uci_get_type("global_other", "compact_display_nodes", 1)
 -%>
 
@@ -120,6 +119,32 @@ table td, .table .td {
 		if (dom) {
 			dom.classList.remove("_select");
 			dom.removeAttribute("nodes_id");
+		}
+	}
+	
+	function select_all(btn) {
+		var doms = document.getElementById("cbi-passwall-nodes").getElementsByClassName("cbi-section-table-row");
+		if (doms && doms.length > 0) {
+			for (var i = 0 ; i < doms.length; i++) {
+				var id = doms[i].id.replace("cbi-passwall-", "");
+				var btn2 = document.getElementById("select_" + id);
+				select_node_div(btn2, id);
+			}
+			btn.value = "<%:DeSelect all%>";
+			btn.setAttribute("onclick", "deselect_all(this)");
+		}
+	}
+	
+	function deselect_all(btn) {
+		var doms = document.getElementById("cbi-passwall-nodes").getElementsByClassName("cbi-section-table-row");
+		if (doms && doms.length > 0) {
+			for (var i = 0 ; i < doms.length; i++) {
+				var id = doms[i].id.replace("cbi-passwall-", "");
+				var btn2 = document.getElementById("select_" + id);
+				deselect_node_div(btn2, id);
+			}
+			btn.value = "<%:Select all%>";
+			btn.setAttribute("onclick", "select_all(this)");
 		}
 	}
 	
@@ -339,9 +364,9 @@ table td, .table .td {
 			var td = edit_btn[i].parentNode;
 			var new_div = "";
 			//添加"选择"按钮到"修改"按钮前
-			new_div += '<input class="cbi-button cbi-button-add" type="button" value="<%:Select%>" onclick="select_node_div(this, \'' + id + '\')"/>&nbsp;&nbsp;';
+			new_div += '<input class="cbi-button cbi-button-add" type="button" value="<%:Select%>" id="select_' + id + '" onclick="select_node_div(this, \'' + id + '\')"/>&nbsp;&nbsp;';
 			//添加"应用"按钮到"修改"按钮前
-			new_div += '<input class="cbi-button cbi-button-apply" type="button" value="<%:Use%>" onclick="open_set_node_div(\'' + id + '\')"/>&nbsp;&nbsp;';
+			new_div += '<input class="cbi-button cbi-button-apply" type="button" value="<%:Use%>" id="apply_' + id + '" onclick="open_set_node_div(\'' + id + '\')"/>&nbsp;&nbsp;';
 			td.innerHTML = new_div + td.innerHTML;
 		}
 		catch(err) {
@@ -365,12 +390,6 @@ table td, .table .td {
 			<% if udp_node_num and tonumber(udp_node_num) >= 1 then %>
 				<% for i = 1, udp_node_num, 1 do %>
 					<input class="cbi-button cbi-button-edit" type="button" onclick="set_node('udp',<%=i%>)" value="UDP_<%=i%>" />
-				<% end %>
-			<% end %>
-			
-			<% if socks_node_num and tonumber(socks_node_num) >= 1 then %>
-				<% for i = 1, socks_node_num, 1 do %>
-					<input class="cbi-button cbi-button-edit" type="button" onclick="set_node('socks',<%=i%>)" value="Socks_<%=i%>" />
 				<% end %>
 			<% end %>
 			<input class="cbi-button cbi-button-remove" type="button" onclick="close_set_node_div()" value="<%:Close%>" />

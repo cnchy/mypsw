@@ -80,22 +80,6 @@ for i = 1, udp_node_num, 1 do
     for k, v in pairs(nodes_table) do o:value(v.id, v.remarks) end
 end
 
----- Socks Node
-local socks_node_num = tonumber(m:get("@global_other[0]","socks_node_num") or 1)
-for i = 1, socks_node_num, 1 do
-    if i == 1 then
-        o = s:option(ListValue, "socks_node" .. i, translate("Socks Node"))
-        -- o.description = translate("The client can use the router's Socks proxy.")
-        o:value("nil", translate("Close"))
-        o:value("tcp", translate("Same as the tcp node"))
-    else
-        o = s:option(ListValue, "socks_node" .. i,
-                     translate("Socks Node") .. " " .. i)
-        o:value("nil", translate("Close"))
-    end
-    for k, v in pairs(nodes_table) do o:value(v.id, v.remarks) end
-end
-
 o = s:option(Value, "up_china_dns", translate("China DNS Server") .. "(UDP)")
 -- o.description = translate("If you want to work with other DNS acceleration services, use the default.<br />Only use two at most, english comma separation, If you do not fill in the # and the following port, you are using port 53.")
 o.default = "default"
@@ -123,7 +107,7 @@ if is_installed("pdnsd") or is_installed("pdnsd-alt") or is_finded("pdnsd") then
     o:value("pdnsd", "pdnsd")
 end
 if is_finded("dns2socks") then
-    o:value("dns2socks", "dns2socks + " .. translate("Use Socks Node Resolve DNS"))
+    o:value("dns2socks", "dns2socks")
 end
 o:value("local_7913", translate("Use local port 7913 as DNS"))
 o:value("nonuse", translate("No patterns are used"))
@@ -137,7 +121,7 @@ if is_installed("pdnsd") or is_installed("pdnsd-alt") or is_finded("pdnsd") then
     o:value("pdnsd", "pdnsd + " .. translate("Use TCP Node Resolve DNS"))
 end
 if is_finded("dns2socks") then
-    o:value("dns2socks", "dns2socks + " .. translate("Use Socks Node Resolve DNS"))
+    o:value("dns2socks", "dns2socks")
 end
 o:value("udp", translate("Use UDP Node Resolve DNS"))
 o:depends("dns_mode", "chinadns-ng")
@@ -150,6 +134,11 @@ o:depends("dns_mode", "chinadns-ng")
     o:depends("dns_mode", "pdnsd")
 end
 --]]
+
+o = s:option(Value, "socks_server", translate("Socks Server"))
+o.default = "127.0.0.1:1080"
+o:depends({dns_mode = "dns2socks"})
+o:depends({dns_mode = "chinadns-ng", up_trust_chinadns_ng_dns = "dns2socks"})
 
 o = s:option(Flag, "fair_mode", translate("Fair Mode"))
 o.default = "1"

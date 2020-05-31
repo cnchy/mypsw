@@ -27,14 +27,13 @@ local function gen_outbound(node, tag)
                 local node_type = (proto and proto ~= "nil") and proto or "socks"
                 local new_port = sys.exec(string.format("echo -n $(/usr/share/%s/app.sh get_new_port auto tcp)", appname))
                 node.port = new_port
-                sys.call(string.format("/usr/share/%s/app.sh gen_start_config %s %s %s %s %s %s", 
+                sys.call(string.format("/usr/share/%s/app.sh gen_socks_config %s %s %s %s %s", 
                     appname,
                     node_id,
+                    "127.0.0.1",
                     new_port,
-                    "SOCKS",
                     string.format("/var/etc/%s/v2_%s_%s.json", appname, node_type, node_id),
-                    "4",
-                    "127.0.0.1")
+                    "4")
                 )
                 node.v2ray_protocol = "socks"
                 node.v2ray_transport = "tcp"

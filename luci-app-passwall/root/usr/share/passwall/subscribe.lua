@@ -68,7 +68,22 @@ do
 	end
 	import_config("tcp")
 	import_config("udp")
-	import_config("socks")
+
+	ucic2:foreach(application, "socks", function(t)
+		local node = t.node
+		local currentNode
+		if node then
+			currentNode = ucic2:get_all(application, node)
+		end
+		CONFIG[#CONFIG + 1] = {
+			log = true,
+			remarks = "Socks节点" .. t[".name"],
+			currentNode = currentNode,
+			set = function(server)
+				ucic2:set(application, t[".name"], "node", server)
+			end
+		}
+	end)
 
 	local tcp_node1_table = ucic2:get(application, "@auto_switch[0]", "tcp_node1")
 	if tcp_node1_table then
@@ -498,7 +513,17 @@ local function truncate_nodes()
 	end
 	clear("tcp")
 	clear("udp")
-	clear("socks")
+
+	ucic2:foreach(application, "socks", function(t)
+		local node = t.node
+		if node then
+			local is_sub_node = ucic2:get(application, node, "is_sub") or 0
+			if is_sub_node == "1" then
+				is_stop = 1
+				ucic2:set(application, t[".name"], "node", "nil")
+			end
+		end
+	end)
 
 	ucic2:foreach(application, uciType, function(node)
 		if (node.is_sub or node.hashkey) and node.add_mode ~= '导入' then

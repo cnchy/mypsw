@@ -94,6 +94,9 @@ msgstr "百度连接"
 msgid "Google Connection"
 msgstr "谷歌连接"
 
+msgid "GitHub Connection"
+msgstr "GitHub连接"
+
 msgid "Node Check"
 msgstr "节点检测"
 
@@ -111,6 +114,9 @@ msgstr "TCP节点"
 
 msgid "UDP Node"
 msgstr "UDP节点"
+
+msgid "Socks Config"
+msgstr "Socks配置"
 
 msgid "Socks Node"
 msgstr "Socks节点"
@@ -150,6 +156,9 @@ msgstr "使用UDP节点解析DNS"
 
 msgid "If checked, DNS is resolved using the TCP node."
 msgstr "如果勾选，则使用TCP节点解析DNS解决污染。"
+
+msgid "Socks Server"
+msgstr "Socks服务器"
 
 msgid "Fair Mode"
 msgstr "公平模式"
@@ -294,6 +303,12 @@ msgstr "选择"
 
 msgid "DeSelect"
 msgstr "反选"
+
+msgid "Select all"
+msgstr "全选"
+
+msgid "DeSelect all"
+msgstr "全不选"
 
 msgid "Are you sure to delete select nodes?"
 msgstr "你确定要删除选择的节点吗？"

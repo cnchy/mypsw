@@ -33,6 +33,7 @@ function index()
     entry({"admin", "vpn", "passwall", "get_log"}, call("get_log")).leaf = true
     entry({"admin", "vpn", "passwall", "clear_log"}, call("clear_log")).leaf = true
     entry({"admin", "vpn", "passwall", "status"}, call("status")).leaf = true
+    entry({"admin", "vpn", "passwall", "socks_status"}, call("socks_status")).leaf = true
     entry({"admin", "vpn", "passwall", "connect_status"}, call("connect_status")).leaf = true
     entry({"admin", "vpn", "passwall", "check_port"}, call("check_port")).leaf = true
     entry({"admin", "vpn", "passwall", "ping_node"}, call("ping_node")).leaf = true
@@ -103,13 +104,16 @@ function status()
     for i = 1, udp_node_num, 1 do
         e["udp_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep -i -E 'UDP_%s' >/dev/null", appname, i)) == 0
     end
+    luci.http.prepare_content("application/json")
+    luci.http.write_json(e)
+end
 
-    local socks_node_num = luci.sys.exec("echo -n $(uci -q get %s.@global_other[0].socks_node_num)" % appname)
-    for i = 1, socks_node_num, 1 do
-        e["kcptun_socks_node%s_status" % i] =
-            luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep 'kcptun_socks_%s' >/dev/null", appname, i)) == 0
-        e["socks_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v grep | grep -v kcptun | grep '%s/bin/' | grep -i 'SOCKS_%s' >/dev/null", appname, i, i)) == 0
-    end
+function socks_status()
+    local e = {}
+    local index = luci.http.formvalue("index")
+    local id = luci.http.formvalue("id")
+    e.index = index
+    e.status = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s' | grep 'SOCKS_%s' > /dev/null", appname, id)) == 0
     luci.http.prepare_content("application/json")
     luci.http.write_json(e)
 end
@@ -117,10 +121,7 @@ end
 function connect_status()
     local e = {}
     e.use_time = ""
-    local url = luci.http.formvalue("url") or "www.baidu.com"
-    if luci.http.formvalue("type") == "google" then
-        url = "www.google.com/generate_204"
-    end
+    local url = luci.http.formvalue("url")
     local result = luci.sys.exec('curl --connect-timeout 5 -o /dev/null -skL -w "%{http_code}:%{time_total}" ' .. url)
     local code = tonumber(luci.sys.exec("echo -n '" .. result .. "' | awk -F ':' '{print $1}'") or "0")
     if code ~= 0 then
@@ -180,7 +181,6 @@ function clear_all_nodes()
 	end
 	clear("tcp")
 	clear("udp")
-	clear("socks")
 
     ucic:commit(appname)
     luci.sys.call("/etc/init.d/" .. appname .. " restart")

@@ -103,7 +103,7 @@ check_port_exists() {
 
 get_new_port() {
 	port=$1
-	[ "$port" == "auto" ] && port=$SOCKS_REDIR_PORT3
+	[ "$port" == "auto" ] && port=2082
 	protocol=$2
 	result=$(check_port_exists $port $protocol)
 	if [ "$result" = 1 ]; then
@@ -155,19 +155,10 @@ UDP_REDIR_PORT1=$(config_t_get global_forwarding udp_redir_port 1051)
 UDP_REDIR_PORT2=$(expr $UDP_REDIR_PORT1 + 1)
 UDP_REDIR_PORT3=$(expr $UDP_REDIR_PORT2 + 1)
 
-SOCKS_NODE_NUM=$(config_t_get global_other socks_node_num 1)
-for i in $(seq 1 $SOCKS_NODE_NUM); do
-	eval SOCKS_NODE$i=$(config_t_get global socks_node$i nil)
-done
-SOCKS_REDIR_PORT1=$(config_t_get global_forwarding socks_proxy_port1 1081)
-SOCKS_REDIR_PORT2=$(config_t_get global_forwarding socks_proxy_port2 1082)
-SOCKS_REDIR_PORT3=$(config_t_get global_forwarding socks_proxy_port3 1083)
-
 [ "$UDP_NODE1" == "tcp" ] && UDP_NODE1=$TCP_NODE1
-[ "$SOCKS_NODE1" == "tcp" ] && SOCKS_NODE1=$TCP_NODE1
 
 # Dynamic variables (Used to record)
-# TCP_NODE1_IP="" UDP_NODE1_IP="" SOCKS_NODE1_IP="" TCP_NODE1_PORT="" UDP_NODE1_PORT="" SOCKS_NODE1_PORT="" TCP_NODE1_TYPE="" UDP_NODE1_TYPE="" SOCKS_NODE1_TYPE=""
+# TCP_NODE1_IP="" UDP_NODE1_IP="" TCP_NODE1_PORT="" UDP_NODE1_PORT="" TCP_NODE1_TYPE="" UDP_NODE1_TYPE=""
 
 TCP_REDIR_PORTS=$(config_t_get global_forwarding tcp_redir_ports '80,443')
 UDP_REDIR_PORTS=$(config_t_get global_forwarding udp_redir_ports '1:65535')
@@ -194,7 +185,7 @@ load_config() {
 	}
 	
 	[ "$ENABLED" != 1 ] && return 1
-	[ "$TCP_NODE1" == "nil" -a "$UDP_NODE1" == "nil" -a "$SOCKS_NODE1" == "nil" ] && {
+	[ "$TCP_NODE1" == "nil" -a "$UDP_NODE1" == "nil" ] && {
 		echolog "没有选择节点！"
 		return 1
 	}
@@ -235,6 +226,62 @@ load_config() {
 	return 0
 }
 
+gen_socks_config() {
+	local node bind local_port config_file server_host port type
+	node=$1
+	bind=$2
+	local_port=$3
+	config_file=$4
+	type=$(echo $(config_n_get $node type) | tr 'A-Z' 'a-z')
+	remarks=$(config_n_get $node remarks)
+	server_host=$(config_n_get $node address)
+	port=$(config_n_get $node port)
+	[ -n "$server_host" -a -n "$port" ] && {
+		# 判断节点服务器地址是否URL并去掉~
+		server_host=$(echo $server_host | sed 's/^\(https:\/\/\|http:\/\/\)//g' | awk -F '/' '{print $1}')
+		# 判断节点服务器地址是否包含汉字~
+		local tmp=$(echo -n $server_host | awk '{print gensub(/[!-~]/,"","g",$0)}')
+		[ -n "$tmp" ] && {
+			echolog "Socks节点，非法的服务器地址，无法启动！"
+			return 1
+		}
+		echolog "Socks节点：$remarks，地址：${server_host}:${port}，监听端口：$local_port"
+	}
+
+	if [ "$type" == "socks" ]; then
+		echolog "Socks节点不能使用Socks代理节点！"
+	elif [ "$type" == "v2ray" ]; then
+		lua $API_GEN_V2RAY $node nil nil $local_port > $config_file
+		ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray "-config=$config_file"
+	elif [ "$type" == "trojan" ]; then
+		lua $API_GEN_TROJAN $node client $bind $local_port > $config_file
+		ln_start_bin $(find_bin trojan) trojan "-c $config_file"
+	elif [ "$type" == "brook" ]; then
+		local protocol=$(config_n_get $node brook_protocol client)
+		local brook_tls=$(config_n_get $node brook_tls 0)
+		[ "$protocol" == "wsclient" ] && {
+			[ "$brook_tls" == "1" ] && server_host="wss://${server_host}" || server_host="ws://${server_host}" 
+		}
+		ln_start_bin $(config_t_get global_app brook_file $(find_bin brook)) brook_socks_$5 "$protocol -l $bind:$local_port -i $$bind -s $server_host:$port -p $(config_n_get $node password)"
+	elif [ "$type" == "ssr" ]; then
+		lua $API_GEN_SS $node $local_port > $config_file
+		ln_start_bin $(find_bin ssr-local) ssr-local "-c $config_file -b $bind -u"
+	elif [ "$type" == "ss" ]; then
+		lua $API_GEN_SS $node $local_port > $config_file
+		local plugin_params=""
+		local plugin=$(config_n_get $node ss_plugin)
+		if [ "$plugin" != "none" ]; then
+			[ "$plugin" == "v2ray-plugin" -o "$plugin" == "obfs-local" ] && {
+				local plugin_opts=""
+				local opts=$(config_n_get $node ss_plugin_opts)
+				[ -n "$opts" ] && plugin_opts="--plugin-opts $opts"
+				plugin_params="--plugin $plugin $plugin_opts"
+			}
+		fi
+		ln_start_bin $(find_bin ss-local) ss-local "-c $config_file -b $bind -u $plugin_params" 
+	fi
+}
+
 gen_start_config() {
 	local node local_port redir_type config_file bind server_host port type
 	node=$1
@@ -259,42 +306,6 @@ gen_start_config() {
 		[ "$bind" == "0.0.0.0" ] && echolog "${redir_type}_${5}节点：$remarks，节点：${server_host}:${port}，监听端口：$local_port"
 	}
 
-	if [ "$redir_type" == "SOCKS" ]; then
-		eval SOCKS_NODE${5}_PORT=$port
-		if [ "$type" == "socks" ]; then
-			echolog "Socks节点不能使用Socks代理节点！"
-		elif [ "$type" == "v2ray" ]; then
-			lua $API_GEN_V2RAY $node nil nil $local_port >$config_file
-			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_socks_$5 "-config=$config_file"
-		elif [ "$type" == "trojan" ]; then
-			lua $API_GEN_TROJAN $node client $bind $local_port >$config_file
-			ln_start_bin $(find_bin trojan) trojan_socks_$5 "-c $config_file"
-		elif [ "$type" == "brook" ]; then
-			local protocol=$(config_n_get $node brook_protocol client)
-			local brook_tls=$(config_n_get $node brook_tls 0)
-			[ "$protocol" == "wsclient" ] && {
-				[ "$brook_tls" == "1" ] && server_host="wss://${server_host}" || server_host="ws://${server_host}" 
-			}
-			ln_start_bin $(config_t_get global_app brook_file $(find_bin brook)) brook_socks_$5 "$protocol -l $bind:$local_port -i $$bind -s $server_host:$port -p $(config_n_get $node password)"
-		elif [ "$type" == "ssr" ]; then
-			lua $API_GEN_SS $node $local_port >$config_file
-			ln_start_bin $(find_bin ssr-local) ssr-local_socks_$5 "-c $config_file -b $bind -u"
-		elif [ "$type" == "ss" ]; then
-			lua $API_GEN_SS $node $local_port >$config_file
-			local plugin_params=""
-			local plugin=$(config_n_get $node ss_plugin)
-			if [ "$plugin" != "none" ]; then
-				[ "$plugin" == "v2ray-plugin" -o "$plugin" == "obfs-local" ] && {
-					local plugin_opts=""
-					local opts=$(config_n_get $node ss_plugin_opts)
-					[ -n "$opts" ] && plugin_opts="--plugin-opts $opts"
-					plugin_params="--plugin $plugin $plugin_opts"
-				}
-			fi
-			ln_start_bin $(find_bin ss-local) ss-local_socks_$5 "-c $config_file -b $bind -u $plugin_params" 
-		fi
-	fi
-
 	if [ "$redir_type" == "UDP" ]; then
 		eval UDP_NODE${5}_PORT=$port
 		
@@ -306,13 +317,11 @@ gen_start_config() {
 			eval port=\$UDP_REDIR_PORT$5
 			ln_start_bin $(find_bin ipt2socks) ipt2socks_udp_$5 "-U -l $port -b 0.0.0.0 -s $node_address -p $node_port -R"
 		elif [ "$type" == "v2ray" ]; then
-			lua $API_GEN_V2RAY $node udp $local_port nil >$config_file
+			lua $API_GEN_V2RAY $node udp $local_port nil > $config_file
 			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_udp_$5 "-config=$config_file"
 		elif [ "$type" == "trojan" ]; then
-			SOCKS_REDIR_PORT4=$(expr $SOCKS_REDIR_PORT3 + 1)
-			local_port=$(get_new_port $SOCKS_REDIR_PORT4 tcp)
-			socks_port=$local_port
-			lua $API_GEN_TROJAN $node client "127.0.0.1" $socks_port >$config_file
+			local_port=$(get_new_port 2080 tcp)
+			lua $API_GEN_TROJAN $node client "127.0.0.1" $local_port > $config_file
 			ln_start_bin $(find_bin trojan) trojan_udp_$5 "-c $config_file"
 			
 			local node_address=$(config_n_get $node address)
@@ -320,7 +329,7 @@ gen_start_config() {
 			local server_username=$(config_n_get $node username)
 			local server_password=$(config_n_get $node password)
 			eval port=\$UDP_REDIR_PORT$5
-			ln_start_bin $(find_bin ipt2socks) ipt2socks_udp_$5 "-U -l $port -b 0.0.0.0 -s 127.0.0.1 -p $socks_port -R"
+			ln_start_bin $(find_bin ipt2socks) ipt2socks_udp_$5 "-U -l $port -b 0.0.0.0 -s 127.0.0.1 -p $local_port -R"
 		elif [ "$type" == "brook" ]; then
 			local protocol=$(config_n_get $node brook_protocol client)
 			if [ "$protocol" == "wsclient" ]; then
@@ -329,10 +338,10 @@ gen_start_config() {
 				ln_start_bin $(config_t_get global_app brook_file $(find_bin brook)) brook_udp_$5 "tproxy -l 0.0.0.0:$local_port -s $server_host:$port -p $(config_n_get $node password)"
 			fi
 		elif [ "$type" == "ssr" ]; then
-			lua $API_GEN_SS $node $local_port >$config_file
+			lua $API_GEN_SS $node $local_port > $config_file
 			ln_start_bin $(find_bin ssr-redir) ssr-redir_udp_$5 "-c $config_file -U"
 		elif [ "$type" == "ss" ]; then
-			lua $API_GEN_SS $node $local_port >$config_file
+			lua $API_GEN_SS $node $local_port > $config_file
 			local plugin_params=""
 			local plugin=$(config_n_get $node ss_plugin)
 			if [ "$plugin" != "none" ]; then
@@ -358,10 +367,10 @@ gen_start_config() {
 			eval port=\$TCP_REDIR_PORT$5
 			ln_start_bin $(find_bin ipt2socks) ipt2socks_tcp_$5 "-T -l $port -b 0.0.0.0 -s $node_address -p $node_port -R"
 		elif [ "$type" == "v2ray" ]; then
-			lua $API_GEN_V2RAY $node tcp $local_port nil >$config_file
+			lua $API_GEN_V2RAY $node tcp $local_port nil > $config_file
 			ln_start_bin $(config_t_get global_app v2ray_file $(find_bin v2ray))/v2ray v2ray_tcp_$5 "-config=$config_file"
 		elif [ "$type" == "trojan" ]; then
-			lua $API_GEN_TROJAN $node nat "0.0.0.0" $local_port >$config_file
+			lua $API_GEN_TROJAN $node nat "0.0.0.0" $local_port > $config_file
 			for k in $(seq 1 $process); do
 				ln_start_bin $(find_bin trojan) trojan_tcp_$5 "-c $config_file"
 			done
@@ -384,18 +393,18 @@ gen_start_config() {
 			fi
 			if [ "$type" == "ssr" ]; then
 				if [ "$kcptun_use" == "1" ]; then
-					lua $API_GEN_SS $node $local_port 127.0.0.1 $KCPTUN_REDIR_PORT >$config_file
+					lua $API_GEN_SS $node $local_port 127.0.0.1 $KCPTUN_REDIR_PORT > $config_file
 				else
-					lua $API_GEN_SS $node $local_port >$config_file
+					lua $API_GEN_SS $node $local_port > $config_file
 				fi
 				for k in $(seq 1 $process); do
 					ln_start_bin $(find_bin ssr-redir) ssr-redir_tcp_$5 "-c $config_file"
 				done
 			elif [ "$type" == "ss" ]; then
 				if [ "$kcptun_use" == "1" ]; then
-					lua $API_GEN_SS $node $local_port 127.0.0.1 $KCPTUN_REDIR_PORT >$config_file
+					lua $API_GEN_SS $node $local_port 127.0.0.1 $KCPTUN_REDIR_PORT > $config_file
 				else
-					lua $API_GEN_SS $node $local_port >$config_file
+					lua $API_GEN_SS $node $local_port > $config_file
 				fi
 				local plugin_params=""
 				local plugin=$(config_n_get $node ss_plugin)
@@ -416,7 +425,7 @@ gen_start_config() {
 				local brook_tls=$(config_n_get $node brook_tls 0)
 				if [ "$protocol" == "wsclient" ]; then
 					[ "$brook_tls" == "1" ] && server_ip="wss://${server_ip}" || server_ip="ws://${server_ip}" 
-					socks_port=$(get_new_port $(expr $SOCKS_REDIR_PORT3 + 3) tcp)
+					socks_port=$(get_new_port 2081 tcp)
 					ln_start_bin $(config_t_get global_app brook_file $(find_bin brook)) brook_tcp_$5 "wsclient -l 127.0.0.1:$socks_port -i 127.0.0.1 -s $server_ip:$port -p $(config_n_get $node password)"
 					eval port=\$TCP_REDIR_PORT$5
 					ln_start_bin $(find_bin ipt2socks) ipt2socks_tcp_$5 "-T -l $port -b 0.0.0.0 -s 127.0.0.1 -p $socks_port -R"
@@ -466,6 +475,19 @@ start_redir() {
 			echo $node > $TMP_ID_PATH/${1}_${i}
 			echo $port > $TMP_PORT_PATH/${1}_${i}
 		}
+	done
+}
+
+start_socks() {
+	local ids=$(uci show $CONFIG | grep "=socks" | awk -F '.' '{print $2}' | awk -F '=' '{print $1}')
+	for id in $ids; do
+		local enabled=$(config_n_get $id enabled 0)
+		[ "$enabled" == "0" ] && continue
+		local node=$(config_n_get $id node nil)
+		[ "$node" == "nil" ] && continue
+		local config_file=$TMP_PATH/SOCKS_${id}.json
+		local port=$(config_n_get $id port)
+		gen_socks_config $node "0.0.0.0" $port $config_file $id
 	done
 }
 
@@ -545,16 +567,14 @@ start_dns() {
 		echolog "DNS：使用本机7913端口DNS服务器解析域名..."
 	;;
 	dns2socks)
-		if [ -n "$SOCKS_NODE1" -a "$SOCKS_NODE1" != "nil" ]; then
+		DNS2SOCKS_SOCKS_SERVER=$(echo $(config_t_get global socks_server nil) | sed "s/#/:/g")
+		[ "$DNS2SOCKS_SOCKS_SERVER" != "nil" ] && {
 			DNS2SOCKS_FORWARD=$(echo $DNS_FORWARD | awk -F ',' '{print $1}')
 			[ -z "$DNS2SOCKS_FORWARD" ] && DNS2SOCKS_FORWARD="8.8.4.4"
 			[ "$DNS_CACHE" == "0" ] && local _cache="/d"
-			ln_start_bin $(find_bin dns2socks) dns2socks "127.0.0.1:$SOCKS_REDIR_PORT1 $DNS2SOCKS_FORWARD 127.0.0.1:$DNS_PORT $_cache"
-			echolog "DNS：dns2socks..."
-		else
-			echolog "DNS：dns2socks模式需要使用Socks代理节点，请开启！"
-			force_stop
-		fi
+			ln_start_bin $(find_bin dns2socks) dns2socks "$DNS2SOCKS_SOCKS_SERVER $DNS2SOCKS_FORWARD 127.0.0.1:$DNS_PORT $_cache"
+			echolog "DNS：dns2socks($DNS2SOCKS_FORWARD)..."
+		}
 	;;
 	pdnsd)
 		if [ -z "$TCP_NODE1" -o "$TCP_NODE1" == "nil" ]; then
@@ -600,17 +620,15 @@ start_dns() {
 				DNS_FORWARD=$(echo $DNS_FORWARD | sed 's/,/ /g')
 			fi
 		elif [ "$up_trust_chinadns_ng_dns" == "dns2socks" ]; then
-			if [ -n "$SOCKS_NODE1" -a "$SOCKS_NODE1" != "nil" ]; then
+			DNS2SOCKS_SOCKS_SERVER=$(echo $(config_t_get global socks_server nil) | sed "s/#/:/g")
+			[ "$DNS2SOCKS_SOCKS_SERVER" != "nil" ] && {
 				DNS2SOCKS_FORWARD=$(echo $DNS_FORWARD | awk -F ',' '{print $1}')
 				[ -z "$DNS2SOCKS_FORWARD" ] && DNS2SOCKS_FORWARD="8.8.4.4"
 				[ "$DNS_CACHE" == "0" ] && local _cache="/d"
-				ln_start_bin $(find_bin dns2socks) dns2socks "127.0.0.1:$SOCKS_REDIR_PORT1 $DNS2SOCKS_FORWARD 127.0.0.1:$other_port $_cache"
+				ln_start_bin $(find_bin dns2socks) dns2socks "$DNS2SOCKS_SOCKS_SERVER $DNS2SOCKS_FORWARD 127.0.0.1:$other_port $_cache"
 				ln_start_bin $(find_bin chinadns-ng) chinadns-ng "-l $DNS_PORT -c $UP_CHINA_DNS -t 127.0.0.1#$other_port $gfwlist_param $chnlist_param $fair_mode"
 				echolog "DNS：ChinaDNS-NG + dns2socks($DNS2SOCKS_FORWARD)，国内DNS：$UP_CHINA_DNS"
-			else
-				echolog "DNS：dns2socks模式需要使用Socks代理节点，请开启！"
-				force_stop
-			fi
+			}
 		elif [ "$up_trust_chinadns_ng_dns" == "udp" ]; then
 			use_udp_node_resolve_dns=1
 			ln_start_bin $(find_bin chinadns-ng) chinadns-ng "-l $DNS_PORT -c $UP_CHINA_DNS -t $DNS_FORWARD $gfwlist_param $chnlist_param $fair_mode"
@@ -632,7 +650,7 @@ add_dnsmasq() {
 	
 	[ "$DNS_MODE" != "nonuse" ] && {
 		[ -f "$RULES_PATH/whitelist_host" -a -s "$RULES_PATH/whitelist_host" ] && cat $RULES_PATH/whitelist_host | sed -e "/^$/d" | sort -u | awk '{if (mode == 0 && dns1 != "") print "server=/."$1"/'$UP_CHINA_DNS1'"; if (mode == 0 && dns2 != "") print "server=/."$1"/'$UP_CHINA_DNS2'"; print "ipset=/."$1"/whitelist"}' mode=$chinadns_mode dns1=$UP_CHINA_DNS1 dns2=$UP_CHINA_DNS2 > $TMP_DNSMASQ_PATH/whitelist_host.conf
-		uci show $CONFIG | grep "@nodes" | grep "address" | cut -d "'" -f 2 | sed 's/^\(https:\/\/\|http:\/\/\)//g' | awk -F '/' '{print $1}' | grep -v "google.c" | grep -E '.*\..*$' | grep '[a-zA-Z]$' | sort -u | awk '{if (dns1 != "") print "server=/."$1"/'$UP_CHINA_DNS1'"; if (dns2 != "") print "server=/."$1"/'$UP_CHINA_DNS2'"; print "ipset=/."$1"/vpsiplist"}' dns1=$UP_CHINA_DNS1 dns2=$UP_CHINA_DNS2 > $TMP_DNSMASQ_PATH/vpsiplist_host.conf
+		uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | sed 's/^\(https:\/\/\|http:\/\/\)//g' | awk -F '/' '{print $1}' | grep -v "google.c" | grep -E '.*\..*$' | grep '[a-zA-Z]$' | sort -u | awk '{if (dns1 != "") print "server=/."$1"/'$UP_CHINA_DNS1'"; if (dns2 != "") print "server=/."$1"/'$UP_CHINA_DNS2'"; print "ipset=/."$1"/vpsiplist"}' dns1=$UP_CHINA_DNS1 dns2=$UP_CHINA_DNS2 > $TMP_DNSMASQ_PATH/vpsiplist_host.conf
 		[ -f "$RULES_PATH/blacklist_host" -a -s "$RULES_PATH/blacklist_host" ] && cat $RULES_PATH/blacklist_host | sed -e "/^$/d" | sort -u | awk '{if (mode == 0) print "server=/."$1"/127.0.0.1#'$DNS_PORT'"; print "ipset=/."$1"/blacklist"}' mode=$chinadns_mode > $TMP_DNSMASQ_PATH/blacklist_host.conf
 		if [ "$chinadns_mode" == 0 ]; then
 			[ -f "$RULES_PATH/gfwlist.conf" -a -s "$RULES_PATH/gfwlist.conf" ] && ln -s $RULES_PATH/gfwlist.conf $TMP_DNSMASQ_PATH/gfwlist.conf
@@ -897,7 +915,7 @@ boot() {
 start() {
 	! load_config && return 1
 	start_haproxy
-	start_redir SOCKS tcp
+	start_socks
 	start_redir TCP tcp
 	start_redir UDP udp
 	start_dns
@@ -926,6 +944,9 @@ stop() {
 case $1 in
 get_new_port)
 	get_new_port $2 $3
+	;;
+gen_socks_config)
+	gen_socks_config $2 $3 $4 $5 $6
 	;;
 gen_start_config)
 	gen_start_config $2 $3 $4 $5 $6 $7

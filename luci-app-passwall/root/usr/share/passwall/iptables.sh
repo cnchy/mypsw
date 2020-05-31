@@ -185,8 +185,8 @@ load_acl() {
 
 filter_vpsip() {
 	echolog "开始过滤所有节点到白名单"
-	uci show $CONFIG | grep "@nodes" | grep "address" | cut -d "'" -f 2 | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_VPSIPLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
-	#uci show $CONFIG | grep "@nodes" | grep "address" | cut -d "'" -f 2 | grep -E "([[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){0,7}::[a-f0-9]{0,4}(:[a-f0-9]{1,4}){0,7}])" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_VPSIP6LIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_VPSIPLIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
+	#uci show $CONFIG | grep ".address=" | cut -d "'" -f 2 | grep -E "([[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){0,7}::[a-f0-9]{0,4}(:[a-f0-9]{1,4}){0,7}])" | sed -e "/^$/d" | sed -e "s/^/add $IPSET_VPSIP6LIST &/g" | awk '{print $0} END{print "COMMIT"}' | ipset -! -R
 	echolog "过滤所有节点完成"
 }
 
@@ -318,13 +318,16 @@ add_firewall_rule() {
 
 	ip rule add fwmark 1 lookup 100
 	ip route add local 0.0.0.0/0 dev lo table 100
-
-	for i in $(seq 1 $SOCKS_NODE_NUM); do
-		eval node=\$SOCKS_NODE$i
-		[ "$node" != "nil" ] && {
-			filter_node $node tcp
-			filter_node $node udp
-		}
+	
+	# 过滤Socks节点
+	local ids=$(uci show $CONFIG | grep "=socks" | awk -F '.' '{print $2}' | awk -F '=' '{print $1}')
+	for id in $ids; do
+		local enabled=$(config_n_get $id enabled 0)
+		[ "$enabled" == "0" ] && continue
+		local node=$(config_n_get $id node nil)
+		[ "$node" == "nil" ] && continue
+		filter_node $node tcp
+		filter_node $node udp
 	done
 	
 	for i in $(seq 1 $TCP_NODE_NUM); do

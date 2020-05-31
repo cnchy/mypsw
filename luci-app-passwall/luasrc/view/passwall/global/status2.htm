@@ -13,7 +13,6 @@ end
 
 local tcp_node_num = api.uci_get_type("global_other", "tcp_node_num", 1)
 local udp_node_num = api.uci_get_type("global_other", "udp_node_num", 1)
-local socks_node_num = api.uci_get_type("global_other", "socks_node_num", 1)
 
 local status_show_check_port = api.uci_get_type("global_other", "status_show_check_port", 0)
 local status_show_ip111 = api.uci_get_type("global_other", "status_show_ip111", 0)
@@ -82,15 +81,6 @@ local status_show_ip111 = api.uci_get_type("global_other", "status_show_ip111", 
 			</div>
 		</div>
 		
-		<div class="cbi-value">
-			<label class="cbi-value-title">Socks
-				<%:Status%>
-			</label>
-			<div class="cbi-value-field" id="_socks_node_status">
-				<%:Collecting data...%>
-			</div>
-		</div>
-		
 		<% if ipkg.installed("kcptun") or is_finded("kcptun*") then %>
 			<div class="cbi-value">
 				<label class="cbi-value-title">Kcptun
@@ -140,6 +130,15 @@ local status_show_ip111 = api.uci_get_type("global_other", "status_show_ip111", 
 				<font id="_google_status"></font>
 			</div>
 		</div>
+		<div class="cbi-value">
+			<label class="cbi-value-title">
+				<%:GitHub Connection%>
+			</label>
+			<div class="cbi-value-field">
+				<input type="button" class="cbi-button cbi-input-apply" value="<%:Check%>" onclick="return check_connect(this, 'github', 'github.com')" />
+				<font id="_github_status"></font>
+			</div>
+		</div>
 		<% if tonumber(status_show_check_port) == 1 then %>
 		<div class="cbi-value">
 			<label class="cbi-value-title">
@@ -172,7 +171,7 @@ local status_show_ip111 = api.uci_get_type("global_other", "status_show_ip111", 
 	var google_status = document.getElementById('_google_status');
 	XHR.poll(3, '<%=dsp.build_url("admin/vpn/passwall/status")%>', null,
 		function(x, json) {
-			if(x && x.status == 200) {
+			if (x && x.status == 200) {
 				var tcp_node_status = document.getElementById('_tcp_node_status');
 				if (tcp_node_status) {
 					var tcp_node_num = <%=tcp_node_num%>;
@@ -236,32 +235,9 @@ local status_show_ip111 = api.uci_get_type("global_other", "status_show_ip111", 
 						udp_node_status.innerHTML = text;
 					}
 				}
-				
-				var socks_node_status = document.getElementById('_socks_node_status');
-				if (socks_node_status) {
-					var socks_node_num = <%=socks_node_num%>;
-					if (socks_node_num >= 1) {
-						var text = '';
-						if (socks_node_num == 1) {
-							if (json["socks_node1_status"])
-								text += '<font color="green"><%:RUNNING%> ✓</font>';
-							else
-								text += '<font color="red"><%:NOT RUNNING%> X</font>';
-						} else {
-							for(var i = 0; i < socks_node_num; i++) {
-								var k = i + 1;
-								if (json["socks_node" + k + "_status"])
-									text += '<font color="green" size="3"> ✓</font>';
-								else
-									text += '<font color="red" size="3"> X</font>';
-							}
-						}
-						socks_node_status.innerHTML = text;
-					}
-				}
-				if(haproxy_status)
+				if (haproxy_status)
 					haproxy_status.innerHTML = json.haproxy_status ? '<font color="green"><%:RUNNING%> ✓</font>' : '<font color="red"><%:NOT RUNNING%> X</font>';
-				if(dns_mode_status)
+				if (dns_mode_status)
 					dns_mode_status.innerHTML = json.dns_mode_status ? '<font color="green"><%:RUNNING%> ✓</font>' : '<font color="red"><%:NOT RUNNING%> X</font>';
 			}
 		});
@@ -312,7 +288,7 @@ local status_show_ip111 = api.uci_get_type("global_other", "status_show_ip111", 
 		XHR.get('<%=dsp.build_url("admin/vpn/passwall/check_port")%>', null,
 			function(x, rv) {
 				var s = document.getElementById('_node_status');
-				if(s) {
+				if (s) {
 					s.innerHTML = rv.ret;
 					var clear_btn = document.getElementById('clear_check_port_btn');
 					clear_btn.style.display = "inline-block";
