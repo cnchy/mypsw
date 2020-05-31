@@ -200,7 +200,7 @@ https://github.com/pure-css/pure/blob/master/LICENSE.md
                 </div>
             </div>
         </div>
-		<div class="pure-u-1-4 check" onclick="check_connect('github', 'github.com')">
+		<div class="pure-u-1-4 check" onclick="check_connect('github', 'https://github.com')">
             <div class="block pure-g">
                 <div class="pure-u-16-24">
                     <h4 id="status_google"><%:GitHub Connection%><br /><span id="_github_status" class="red"><%:Touch Check%></span></h4>
@@ -352,9 +352,9 @@ https://github.com/pure-css/pure/blob/master/LICENSE.md
 					function(x, rv) {
 						if (rv.ping_type && rv.ping_type == "curl") {
 							var use_time = rv.use_time;
-							if (use_time < 200) {
+							if (use_time < 1000) {
 								s.className="green";
-							} else if (use_time < 500) {
+							} else if (use_time < 2000) {
 								s.className="yellow";
 							} else {
 								s.className="red";

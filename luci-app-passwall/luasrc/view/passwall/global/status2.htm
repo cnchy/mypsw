@@ -135,7 +135,7 @@ local status_show_ip111 = api.uci_get_type("global_other", "status_show_ip111", 
 				<%:GitHub Connection%>
 			</label>
 			<div class="cbi-value-field">
-				<input type="button" class="cbi-button cbi-input-apply" value="<%:Check%>" onclick="return check_connect(this, 'github', 'github.com')" />
+				<input type="button" class="cbi-button cbi-input-apply" value="<%:Check%>" onclick="return check_connect(this, 'github', 'https://github.com')" />
 				<font id="_github_status"></font>
 			</div>
 		</div>
@@ -256,9 +256,9 @@ local status_show_ip111 = api.uci_get_type("global_other", "status_show_ip111", 
 					if (rv.ping_type && rv.ping_type == "curl") {
 						var use_time = rv.use_time;
 						var color="red";
-						if (use_time < 200) {
+						if (use_time < 1000) {
 							color = "green";
-						} else if (use_time < 500) {
+						} else if (use_time < 2000) {
 							color = "#b9b90b";
 						} else {
 							color = "red";

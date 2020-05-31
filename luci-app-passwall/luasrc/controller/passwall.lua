@@ -58,8 +58,7 @@ local function http_write_json(content)
 end
 
 function reset_config()
-    luci.sys.call(
-        '[ -f "/usr/share/passwall/config.default" ] && cp -f /usr/share/passwall/config.default /etc/config/passwall && /etc/init.d/passwall reload')
+    luci.sys.call('[ -f "/usr/share/passwall/config.default" ] && cp -f /usr/share/passwall/config.default /etc/config/passwall && /etc/init.d/passwall reload')
     luci.http.redirect(luci.dispatcher.build_url("admin", "vpn", "passwall"))
 end
 
@@ -75,32 +74,30 @@ end
 
 function link_add_node()
     local link = luci.http.formvalue("link")
-    luci.sys.call('rm -f /tmp/links.conf && echo "' .. link ..
-                      '" >> /tmp/links.conf')
+    luci.sys.call('rm -f /tmp/links.conf && echo "' .. link .. '" >> /tmp/links.conf')
     luci.sys.call("lua /usr/share/passwall/subscribe.lua add log")
 end
 
 function get_log()
     -- luci.sys.exec("[ -f /var/log/passwall.log ] && sed '1!G;h;$!d' /var/log/passwall.log > /var/log/passwall_show.log")
-    luci.http.write(luci.sys.exec(
-                        "[ -f '/var/log/passwall.log' ] && cat /var/log/passwall.log"))
+    luci.http.write(luci.sys.exec("[ -f '/var/log/passwall.log' ] && cat /var/log/passwall.log"))
 end
 
 function clear_log() luci.sys.call("echo '' > /var/log/passwall.log") end
 
 function status()
-    -- local dns_mode = luci.sys.exec("echo -n $(uci -q get " .. appname .. ".@global[0].dns_mode)")
+    -- local dns_mode = ucic:get(appname, "@global[0]", "dns_mode")
     local e = {}
     e.dns_mode_status = luci.sys.call("netstat -apn | grep 7913 >/dev/null") == 0
     e.haproxy_status = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep haproxy >/dev/null", appname)) == 0
-    local tcp_node_num = luci.sys.exec("echo -n $(uci -q get %s.@global_other[0].tcp_node_num)" % appname)
+    local tcp_node_num = ucic:get(appname, "@global_other[0]", "tcp_node_num") or 1
     for i = 1, tcp_node_num, 1 do
         e["kcptun_tcp_node%s_status" % i] =
             luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep 'kcptun_tcp_%s' >/dev/null", appname, i)) == 0
         e["tcp_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v grep | grep -v kcptun | grep '%s/bin/' | grep -i -E 'TCP_%s' >/dev/null", appname, i)) == 0
     end
 
-    local udp_node_num = luci.sys.exec("echo -n $(uci -q get %s.@global_other[0].udp_node_num)" % appname)
+    local udp_node_num = ucic:get(appname, "@global_other[0]", "udp_node_num") or 1
     for i = 1, udp_node_num, 1 do
         e["udp_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep -i -E 'UDP_%s' >/dev/null", appname, i)) == 0
     end
@@ -122,7 +119,7 @@ function connect_status()
     local e = {}
     e.use_time = ""
     local url = luci.http.formvalue("url")
-    local result = luci.sys.exec('curl --connect-timeout 5 -o /dev/null -skL -w "%{http_code}:%{time_total}" ' .. url)
+    local result = luci.sys.exec('curl --connect-timeout 5 -o /dev/null -I -skL -w "%{http_code}:%{time_total}" ' .. url)
     local code = tonumber(luci.sys.exec("echo -n '" .. result .. "' | awk -F ':' '{print $1}'") or "0")
     if code ~= 0 then
         local use_time = luci.sys.exec("echo -n '" .. result .. "' | awk -F ':' '{print $2}'")
@@ -139,7 +136,7 @@ function ping_node()
     local port = luci.http.formvalue("port")
     local e = {}
     e.index = index
-    if luci.sys.exec("echo -n $(uci -q get %s.@global_other[0].use_tcping)" % appname) == "1" and luci.sys.exec("echo -n $(command -v tcping)") ~= "" then
+    if (ucic:get(appname, "@global_other[0]", "use_tcping") or 1)  == "1" and luci.sys.exec("echo -n $(command -v tcping)") ~= "" then
         e.ping = luci.sys.exec(string.format("echo -n $(tcping -q -c 1 -i 1 -p %s %s 2>&1 | grep -o 'time=[0-9]*' | awk -F '=' '{print $2}') 2>/dev/null", port, address))
         luci.sys.call(string.format("ps -w | grep 'tcping -q -c 1 -i 1 -p %s %s' | grep -v grep | awk '{print $1}' | xargs kill -9 2>/dev/null", port, address))
     end
@@ -154,7 +151,9 @@ function set_node()
     local protocol = luci.http.formvalue("protocol")
     local number = luci.http.formvalue("number")
     local section = luci.http.formvalue("section")
-    luci.sys.call("uci set passwall.@global[0]." .. protocol .. "_node" .. number .. "=" .. section .. " && uci commit passwall && /etc/init.d/passwall restart > /dev/null 2>&1 &")
+    ucic:set(appname, "@global[0]", protocol .. "_node" .. number, section)
+    ucic:commit(appname)
+    luci.sys.call("/etc/init.d/passwall restart > /dev/null 2>&1 &")
     luci.http.redirect(luci.dispatcher.build_url("admin", "vpn", "passwall", "log"))
 end
 
@@ -196,16 +195,13 @@ function delete_select_nodes()
 end
 
 function check_port()
-    local s
     local node_name = ""
-    local uci = luci.model.uci.cursor()
 
     local retstring = "<br />"
     -- retstring = retstring .. "<font color='red'>暂时不支持UDP检测</font><br />"
 
-    retstring = retstring ..
-                    "<font color='green'>检测端口可用性</font><br />"
-    uci:foreach("passwall", "nodes", function(s)
+    retstring = retstring .. "<font color='green'>检测端口可用性</font><br />"
+    ucic:foreach("passwall", "nodes", function(s)
         local ret = ""
         local tcp_socket
         if (s.use_kcp and s.use_kcp == "1" and s.kcp_port) or
@@ -221,13 +217,9 @@ function check_port()
                 tcp_socket:setopt("socket", "sndtimeo", 3)
                 ret = tcp_socket:connect(s.address, s.port)
                 if tostring(ret) == "true" then
-                    retstring =
-                        retstring .. "<font color='green'>" .. node_name ..
-                            "   OK.</font><br />"
+                    retstring = retstring .. "<font color='green'>" .. node_name .. "   OK.</font><br />"
                 else
-                    retstring =
-                        retstring .. "<font color='red'>" .. node_name ..
-                            "   Error.</font><br />"
+                    retstring = retstring .. "<font color='red'>" .. node_name .. "   Error.</font><br />"
                 end
                 ret = ""
             end
@@ -240,8 +232,7 @@ end
 
 function update_rules()
     local update = luci.http.formvalue("update")
-    luci.sys.call("lua /usr/share/passwall/rule_update.lua log '" .. update ..
-                      "' > /dev/null 2>&1 &")
+    luci.sys.call("lua /usr/share/passwall/rule_update.lua log '" .. update .. "' > /dev/null 2>&1 &")
 end
 
 function kcptun_check()
