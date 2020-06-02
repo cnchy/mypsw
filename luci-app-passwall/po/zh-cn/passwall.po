@@ -298,6 +298,9 @@ msgstr "错误"
 msgid "Delete select nodes"
 msgstr "删除选择的节点"
 
+msgid "To Top"
+msgstr "置顶"
+
 msgid "Select"
 msgstr "选择"
 

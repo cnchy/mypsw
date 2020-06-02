@@ -102,6 +102,21 @@ table td, .table .td {
 		document.getElementById("set_node_name").innerHTML = "";
 	}
 	
+	function _cbi_row_top(id) {
+		var dom = document.getElementById("cbi-passwall-" + id);
+		if (dom) {
+			var trs = document.getElementById("cbi-passwall-nodes").getElementsByClassName("cbi-section-table-row");
+			if (trs && trs.length > 0) {
+				for (var i = 0; i < trs.length; i++) {
+					var up = dom.getElementsByClassName("cbi-button-up");
+					if (up) {
+						cbi_row_swap(up[0], true, 'cbi.sts.passwall.nodes');
+					}
+				}
+			}
+		}
+	}
+	
 	function select_node_div(btn, id) {
 		btn.value = "<%:DeSelect%>";
 		btn.setAttribute("onclick", "deselect_node_div(this, '" + id + "')");
@@ -363,6 +378,8 @@ table td, .table .td {
 			var id = onclick_str.substring(onclick_str.lastIndexOf('/') + 1, onclick_str.length - 1);
 			var td = edit_btn[i].parentNode;
 			var new_div = "";
+			//添加"置顶"按钮到"修改"按钮前
+			new_div += '<input class="cbi-button" type="button" value="<%:To Top%>" onclick="_cbi_row_top(\'' + id + '\')"/>&nbsp;&nbsp;';
 			//添加"选择"按钮到"修改"按钮前
 			new_div += '<input class="cbi-button cbi-button-add" type="button" value="<%:Select%>" id="select_' + id + '" onclick="select_node_div(this, \'' + id + '\')"/>&nbsp;&nbsp;';
 			//添加"应用"按钮到"修改"按钮前
