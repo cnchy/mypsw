@@ -29,6 +29,7 @@ function index()
     entry({"admin", "vpn", "passwall", "acl"}, cbi("passwall/acl"), _("Access control"), 97).leaf = true
     entry({"admin", "vpn", "passwall", "log"}, form("passwall/log"), _("Watch Logs"), 99).leaf = true
     entry({"admin", "vpn", "passwall", "node_config"}, cbi("passwall/node_config")).leaf = true
+    entry({"admin", "vpn", "passwall", "shunt_rules"}, cbi("passwall/shunt_rules")).leaf = true
     entry({"admin", "vpn", "passwall", "link_add_node"}, call("link_add_node")).leaf = true
     entry({"admin", "vpn", "passwall", "get_log"}, call("get_log")).leaf = true
     entry({"admin", "vpn", "passwall", "clear_log"}, call("clear_log")).leaf = true
