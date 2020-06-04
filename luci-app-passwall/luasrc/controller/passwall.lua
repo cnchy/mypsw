@@ -84,7 +84,9 @@ function get_log()
     luci.http.write(luci.sys.exec("[ -f '/var/log/passwall.log' ] && cat /var/log/passwall.log"))
 end
 
-function clear_log() luci.sys.call("echo '' > /var/log/passwall.log") end
+function clear_log()
+    luci.sys.call("echo '' > /var/log/passwall.log")
+end
 
 function status()
     -- local dns_mode = ucic:get(appname, "@global[0]", "dns_mode")
@@ -93,14 +95,17 @@ function status()
     e.haproxy_status = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep haproxy >/dev/null", appname)) == 0
     local tcp_node_num = ucic:get(appname, "@global_other[0]", "tcp_node_num") or 1
     for i = 1, tcp_node_num, 1 do
-        e["kcptun_tcp_node%s_status" % i] =
-            luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep 'kcptun_tcp_%s' >/dev/null", appname, i)) == 0
-        e["tcp_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v grep | grep -v kcptun | grep '%s/bin/' | grep -i -E 'TCP_%s' >/dev/null", appname, i)) == 0
+        e["kcptun_tcp_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/kcptun' | grep -i 'tcp_%s' >/dev/null", appname, i)) == 0
+        e["tcp_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v -E 'grep|kcptun' | grep '%s/bin/' | grep -i 'TCP_%s' >/dev/null", appname, i)) == 0
     end
 
     local udp_node_num = ucic:get(appname, "@global_other[0]", "udp_node_num") or 1
     for i = 1, udp_node_num, 1 do
-        e["udp_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep -i -E 'UDP_%s' >/dev/null", appname, i)) == 0
+        if (ucic:get(appname, "@global[0]", "udp_node" .. i) or "nil") == "tcp" then
+            e["udp_node%s_status" % i] = e["tcp_node%s_status" % i]
+        else
+            e["udp_node%s_status" % i] = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep -i 'UDP_%s' >/dev/null", appname, i)) == 0
+        end
     end
     luci.http.prepare_content("application/json")
     luci.http.write_json(e)
@@ -111,7 +116,7 @@ function socks_status()
     local index = luci.http.formvalue("index")
     local id = luci.http.formvalue("id")
     e.index = index
-    e.status = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s' | grep 'SOCKS_%s' > /dev/null", appname, id)) == 0
+    e.status = luci.sys.call(string.format("ps -w | grep -v grep | grep '%s/bin/' | grep 'SOCKS_%s' > /dev/null", appname, id)) == 0
     luci.http.prepare_content("application/json")
     luci.http.write_json(e)
 end

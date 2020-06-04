@@ -391,6 +391,7 @@ add_firewall_rule() {
 	for i in $(seq 1 $UDP_NODE_NUM); do
 		eval node=\$UDP_NODE$i
 		eval port=\$UDP_REDIR_PORT$i
+		[ "$node" == "tcp" ] && eval node=\$TCP_NODE$i && eval port=\$TCP_REDIR_PORT$i
 		[ "$node" != "nil" ] && filter_node $node udp $port
 	done
 	
