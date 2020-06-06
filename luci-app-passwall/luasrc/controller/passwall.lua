@@ -26,10 +26,16 @@ function index()
     end
     entry({"admin", "vpn", "passwall", "node_subscribe"}, cbi("passwall/node_subscribe"), _("Node Subscribe"), 95).dependent = true
     entry({"admin", "vpn", "passwall", "rule"}, cbi("passwall/rule"), _("Rule Update"), 96).leaf = true
-    entry({"admin", "vpn", "passwall", "acl"}, cbi("passwall/acl"), _("Access control"), 97).leaf = true
-    entry({"admin", "vpn", "passwall", "log"}, form("passwall/log"), _("Watch Logs"), 99).leaf = true
     entry({"admin", "vpn", "passwall", "node_config"}, cbi("passwall/node_config")).leaf = true
     entry({"admin", "vpn", "passwall", "shunt_rules"}, cbi("passwall/shunt_rules")).leaf = true
+    entry({"admin", "vpn", "passwall", "acl"}, cbi("passwall/acl"), _("Access control"), 97).leaf = true
+    entry({"admin", "vpn", "passwall", "log"}, form("passwall/log"), _("Watch Logs"), 999).leaf = true
+    entry({"admin", "vpn", "passwall", "server"}, cbi("passwall/server/index"), _("Server-Side"), 99).leaf = true
+    entry({"admin", "vpn", "passwall", "server_user"}, cbi("passwall/server/user")).leaf = true
+
+    entry({"admin", "vpn", "passwall", "server_user_status"}, call("server_user_status")).leaf = true
+    entry({"admin", "vpn", "passwall", "server_get_log"}, call("server_get_log")).leaf = true
+    entry({"admin", "vpn", "passwall", "server_clear_log"}, call("server_clear_log")).leaf = true
     entry({"admin", "vpn", "passwall", "link_add_node"}, call("link_add_node")).leaf = true
     entry({"admin", "vpn", "passwall", "get_log"}, call("get_log")).leaf = true
     entry({"admin", "vpn", "passwall", "clear_log"}, call("clear_log")).leaf = true
@@ -239,6 +245,21 @@ end
 function update_rules()
     local update = luci.http.formvalue("update")
     luci.sys.call("lua /usr/share/passwall/rule_update.lua log '" .. update .. "' > /dev/null 2>&1 &")
+end
+
+function server_user_status()
+    local e = {}
+    e.index = luci.http.formvalue("index")
+    e.status = luci.sys.call(string.format("ps -w | grep -v 'grep' | grep '%s/bin/' | grep -i '%s' >/dev/null", appname .. "_server", luci.http.formvalue("id"))) == 0
+    http_write_json(e)
+end
+
+function server_get_log()
+    luci.http.write(luci.sys.exec("[ -f '/var/log/passwall_server.log' ] && cat /var/log/passwall_server.log"))
+end
+
+function server_clear_log()
+    luci.sys.call("echo '' > /var/log/passwall_server.log")
 end
 
 function kcptun_check()
