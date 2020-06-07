@@ -946,6 +946,18 @@ msgstr "私钥文件绝对路径"
 msgid "Server-Side"
 msgstr "服务器端"
 
+msgid "Server Config"
+msgstr "服务器配置"
+
+msgid "Users Manager"
+msgstr "用户管理"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "UDP Forward"
+msgstr "UDP转发"
+
 msgid "Can't determine ARCH, or ARCH not supported."
 msgstr "无法确认ARCH架构，或是不支持。"
 

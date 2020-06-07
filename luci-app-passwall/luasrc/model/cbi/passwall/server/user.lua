@@ -280,7 +280,7 @@ remote_port.default = "80"
 remote_port:depends("remote_enable", 1)
 
 -- [[ TLS部分 ]] --
-tls_enable = s:option(Flag, "tls_enable", translate("Use HTTPS"))
+tls_enable = s:option(Flag, "tls_enable", "TLS/SSL")
 tls_enable:depends({ type = "V2ray", v2ray_protocol = "vmess", v2ray_transport = "ws" })
 tls_enable:depends({ type = "V2ray", v2ray_protocol = "vmess", v2ray_transport = "h2" })
 tls_enable.default = "1"
